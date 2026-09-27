@@ -65,7 +65,8 @@ private struct MonthGrid: View {
             ForEach(model.days, id: \.self) { day in
                 DayCell(
                     number: model.calendar.component(.day, from: day),
-                    weekdayColor: WeekdayColor.of(weekday(of: day)),
+                    // 祝日は日曜と同じ赤。祝日のカレンダーは設定の窓の「カレンダー」タブで選ぶ。
+                    weekdayColor: model.isHoliday(day) ? .red : WeekdayColor.of(weekday(of: day)),
                     isToday: day == model.today,
                     isSelected: day == model.selectedDay,
                     isInMonth: model.isInShownMonth(day),
@@ -92,7 +93,7 @@ private struct MonthGrid: View {
     }
 }
 
-/// 日曜は赤、土曜は青。日本の紙のカレンダーと同じ。
+/// 日曜は赤、土曜は青。日本の紙のカレンダーと同じ（祝日の赤は `CalendarModel.holidays` から）。
 private enum WeekdayColor {
     /// `weekday` は `Calendar.component(.weekday, …)` の値。グレゴリオ暦では 1 が日曜、7 が土曜で、
     /// 週の始まりの設定（`firstWeekday`）には左右されない。ほかの曜日は nil（ふつうの文字の色）。

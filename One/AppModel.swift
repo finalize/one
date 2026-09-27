@@ -76,6 +76,17 @@ final class AppModel {
         }
     }
 
+    /// メニューバーの ⌘ の左クリックでカレンダーを出すか。
+    ///
+    /// 既定は true（左クリックでカレンダー、右クリックでメニュー）。false なら逆になる。
+    /// よく使うほうを左に置けるように、設定の窓の「カレンダー」タブで入れ替えられる。
+    var leftClickShowsCalendar = true {
+        didSet {
+            guard leftClickShowsCalendar != oldValue else { return }
+            UserDefaults.standard.set(leftClickShowsCalendar, forKey: Self.leftClickShowsCalendarKey)
+        }
+    }
+
     /// ログイン時に起動するか。
     ///
     /// 値を UserDefaults に持たず、毎回 `SMAppService` に聞く。システム設定の
@@ -108,6 +119,7 @@ final class AppModel {
     private static let showsModeKey = "showsModeInMenuBar"
     private static let arrangesWindowsKey = "arrangesWindows"
     private static let snapsWindowsKey = "snapsWindows"
+    private static let leftClickShowsCalendarKey = "leftClickShowsCalendar"
 
     private let watcher = CommandKeyWatcher()
     private let hotKeys = HotKeys()
@@ -138,6 +150,7 @@ final class AppModel {
         // したいので、「保存していない」を見分けられる `object(forKey:)` で読む。
         arrangesWindows = UserDefaults.standard.object(forKey: Self.arrangesWindowsKey) as? Bool ?? true
         snapsWindows = UserDefaults.standard.object(forKey: Self.snapsWindowsKey) as? Bool ?? true
+        leftClickShowsCalendar = UserDefaults.standard.object(forKey: Self.leftClickShowsCalendarKey) as? Bool ?? true
 
         reloadInputSources()
         refreshCurrentMode()

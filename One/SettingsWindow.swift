@@ -10,15 +10,19 @@ import SwiftUI
 final class SettingsWindow {
     private let model: AppModel
     private let mirror: MirrorModel
+    private let calendar: CalendarModel
     /// 閉じても捨てずに持っておく。次に開いたとき、前に見ていたタブのまま出る。
     private var window: NSWindow?
 
-    init(model: AppModel, mirror: MirrorModel) {
+    init(model: AppModel, mirror: MirrorModel, calendar: CalendarModel) {
         self.model = model
         self.mirror = mirror
+        self.calendar = calendar
     }
 
     func show() {
+        // カレンダーの許可や一覧は、システム設定やカレンダー.app で変わっているかもしれない。
+        calendar.refresh()
         let window = window ?? makeWindow()
         self.window = window
         // One はふだん前面のアプリではない。前に出さないと、窓が前にいるアプリの窓の
@@ -30,10 +34,11 @@ final class SettingsWindow {
     private func makeWindow() -> NSWindow {
         let tabs = SettingsTabs()
         tabs.tabStyle = .toolbar
-        tabs.addTabViewItem(page("一般", "gearshape", GeneralSettings(model: model)))
+        tabs.addTabViewItem(page("一般", "gearshape", GeneralSettings(model: model, calendar: calendar)))
         tabs.addTabViewItem(page("英かな", "command", InputSettings(model: model)))
         tabs.addTabViewItem(page("ウィンドウ", "uiwindow.split.2x1", WindowSettings(model: model)))
         tabs.addTabViewItem(page("鏡", "web.camera", MirrorSettings(mirror: mirror)))
+        tabs.addTabViewItem(page("カレンダー", "calendar", CalendarSettings(model: model, calendar: calendar)))
 
         let window = NSWindow(contentViewController: tabs)
         // 大きさは中身が決める。端を掴んで変えられないように、resizable を外す。

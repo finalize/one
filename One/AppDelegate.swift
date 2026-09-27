@@ -3,13 +3,14 @@ import AppKit
 /// 部品をつなぐ。メニューバーのアイコンと右クリックのメニュー、カレンダー・鏡・設定の窓。
 ///
 /// アイコンは左クリックでカレンダー、右クリック（か control + クリック）でメニュー。
-/// よく使うほうを左に置いた。
+/// よく使うほうを左に置いた。設定の窓の「カレンダー」タブで入れ替えられる。
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     // 起動が済んでから作る（下の applicationDidFinishLaunching）。`!` は「使うときには
     // 必ず入っている」という約束で、入っていなければそこで落ちる。
     private var model: AppModel!
     private var mirror: MirrorModel!
+    private var calendarModel: CalendarModel!
     private var calendar: CalendarController!
     private var settings: SettingsWindow!
     private var statusItem: NSStatusItem!
@@ -17,8 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = AppModel()
         mirror = MirrorModel()
-        calendar = CalendarController(model: CalendarModel())
-        settings = SettingsWindow(model: model, mirror: mirror)
+        calendarModel = CalendarModel()
+        calendar = CalendarController(model: calendarModel)
+        settings = SettingsWindow(model: model, mirror: mirror, calendar: calendarModel)
 
         // 幅は中身に合わせる。「A / あ も出す」を入れると文字のぶん広がる。
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -63,7 +65,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func statusItemClicked() {
         let event = NSApp.currentEvent
-        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
+        let isRightClick = event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true
+        // 既定は左でカレンダー、右でメニュー。入れ替えていれば逆。
+        // `==` を Bool 同士に使うと「同じなら」。右クリックで、かつ左がカレンダーならメニュー、という具合。
+        if isRightClick == model.leftClickShowsCalendar {
             calendar.hide()
             showMenu()
         } else if let place = buttonPlace {
