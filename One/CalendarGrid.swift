@@ -46,6 +46,8 @@ enum CalendarGrid {
     /// 一覧に出す時刻の表記。`day` の中で始まり・終わるならその時刻、日をまたぐ側は空ける。
     ///
     /// 10:00–11:00 / 22:00–（翌日まで続く）/ –9:00（前の日から続く）/ 終日
+    ///
+    /// 長さが 0 の予定は始まりだけ（9:00）。終わりが始まりより前の予定も同じにする。
     static func timeLabel(start: Date, end: Date, isAllDay: Bool, day: Date, calendar: Calendar) -> String {
         if isAllDay { return "終日" }
         guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { return "" }
