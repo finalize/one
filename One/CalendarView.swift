@@ -53,15 +53,19 @@ private struct MonthGrid: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
             // 曜日の見出しは同じ字が2回出る暦もある（英語の T と S）ので、位置で見分ける。
-            ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
+            //
+            // その列が何曜日かは、表の1行目のその列の日から取る。週の始まりを月曜にした Mac でも、
+            // 日曜の列（右端）が赤になる。見出しの並びと表の並びが同じところから決まるので、ずれない。
+            ForEach(Array(model.weekdaySymbols.enumerated()), id: \.offset) { column, symbol in
                 Text(symbol)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(WeekdayColor.of(weekday(of: model.days[column])) ?? .secondary)
                     .frame(height: 16)
             }
             ForEach(model.days, id: \.self) { day in
                 DayCell(
                     number: model.calendar.component(.day, from: day),
+                    weekdayColor: WeekdayColor.of(weekday(of: day)),
                     isToday: day == model.today,
                     isSelected: day == model.selectedDay,
                     isInMonth: model.isInShownMonth(day),
@@ -71,6 +75,10 @@ private struct MonthGrid: View {
                 }
             }
         }
+    }
+
+    private func weekday(of day: Date) -> Int {
+        model.calendar.component(.weekday, from: day)
     }
 
     /// 日の下に出す点の色。予定のカレンダーの色を、重ならないように3つまで。
@@ -84,8 +92,23 @@ private struct MonthGrid: View {
     }
 }
 
+/// 日曜は赤、土曜は青。日本の紙のカレンダーと同じ。
+private enum WeekdayColor {
+    /// `weekday` は `Calendar.component(.weekday, …)` の値。グレゴリオ暦では 1 が日曜、7 が土曜で、
+    /// 週の始まりの設定（`firstWeekday`）には左右されない。ほかの曜日は nil（ふつうの文字の色）。
+    static func of(_ weekday: Int) -> Color? {
+        switch weekday {
+        case 1: .red
+        case 7: .blue
+        default: nil
+        }
+    }
+}
+
 private struct DayCell: View {
     let number: Int
+    /// 日曜・土曜の色。ほかの曜日は nil。
+    let weekdayColor: Color?
     let isToday: Bool
     let isSelected: Bool
     let isInMonth: Bool
@@ -120,9 +143,11 @@ private struct DayCell: View {
         .buttonStyle(.plain)
     }
 
+    /// 選んでいる日（白）と今日（アクセントの色）が先。そのほかは曜日の色で、前後の月の日は薄くする。
     private var foreground: Color {
         if isSelected { return .white }
         if isToday { return .accentColor }
+        if let weekdayColor { return isInMonth ? weekdayColor : weekdayColor.opacity(0.45) }
         return isInMonth ? .primary : .secondary.opacity(0.6)
     }
 }
