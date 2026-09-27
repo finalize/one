@@ -5,8 +5,10 @@
 # （README の「zip から入れる」）。
 #
 # 公証（notarization）はしていない。Developer ID の証明書、つまり有料の
-# Apple Developer Program が要るため。なので受け取った人は最初の起動で
-# Gatekeeper に止められ、システム設定の「このまま開く」を押すことになる。
+# Apple Developer Program が要るため。なので受け取った人は、ブラウザが付けた
+# 「インターネットから来た」印をターミナルで外してから開く（README の「zip から入れる」）。
+# 印を付けたまま開くと Gatekeeper に止められ、試したときはシステム設定の
+# 「このまま開く」も出なかった。
 set -e
 cd "$(dirname "$0")"
 
