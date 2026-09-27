@@ -86,10 +86,10 @@
 				};
 			};
 			buildConfigurationList = A1B2C3D4000000000000000A /* Build configuration list for PBXProject "One" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				ja,
 				Base,
 			);
 			mainGroup = A1B2C3D40000000000000004;
@@ -190,6 +190,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "カレンダーの予定を月の表に並べて見せるために使います。読むだけで、書き換えません。";
 				INFOPLIST_KEY_NSCameraUsageDescription = "鏡としてカメラの映像を映すために使います。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -218,6 +219,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "カレンダーの予定を月の表に並べて見せるために使います。読むだけで、書き換えません。";
 				INFOPLIST_KEY_NSCameraUsageDescription = "鏡としてカメラの映像を映すために使います。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

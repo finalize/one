@@ -1,40 +1,28 @@
 import SwiftUI
 
-/// 設定の窓。機能ごとにタブを分ける。
+/// 設定の窓の各タブの中身。窓とタブそのものは `SettingsWindow` が AppKit で組む。
 ///
-/// `OneApp` の `Settings` シーンの中身。macOS では `Settings` の中に `TabView` を置くと、
-/// 窓の上にアイコン付きのタブが並ぶ、システム設定の各アプリでおなじみの形になる。
-/// タブごとに高さが違ってよく、切り替えると窓の高さが中身に合わせて伸び縮みする。
+/// 前は SwiftUI の `Settings` シーンの中に `TabView` を置いていた。アイコンの左右の
+/// クリックを見分けるためにメニューバーの部分を AppKit にしたところ、`Settings` シーンを
+/// 開く手段が無くなった。開く `openSettings` は SwiftUI の画面の中からしか呼べず、
+/// AppKit のメニューからは届かない。中身は SwiftUI のまま、入れ物だけを AppKit にしてある。
 ///
-/// メニューには操作（ウィンドウを動かす・鏡を出す）だけを残し、切り替えや選択は
-/// ここに集めた。
-struct SettingsView: View {
-    /// `@Bindable` は `@Observable` なオブジェクトから `$model.isSwapped` の形で
-    /// 双方向の結び付き（Binding）を作れるようにする印。Toggle のように
-    /// 「読むだけでなく書き換えもする」部品に渡すときに必要になる。
-    @Bindable var model: AppModel
-    @Bindable var mirror: MirrorModel
-
-    var body: some View {
-        TabView {
-            GeneralSettings(model: model)
-                .tabItem { Label("一般", systemImage: "gearshape") }
-            InputSettings(model: model)
-                .tabItem { Label("英かな", systemImage: "command") }
-            WindowSettings(model: model)
-                .tabItem { Label("ウィンドウ", systemImage: "uiwindow.split.2x1") }
-            MirrorSettings(mirror: mirror)
-                .tabItem { Label("鏡", systemImage: "web.camera") }
-        }
-        // `.grouped` は、システム設定と同じ「角の丸い箱に項目を並べる」見た目。
-        // 幅は固定し、高さは中身に任せる。
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
+/// `@Bindable` は `@Observable` なオブジェクトから `$model.isSwapped` の形で
+/// 双方向の結び付き（Binding）を作れるようにする印。Toggle のように
+/// 「読むだけでなく書き換えもする」部品に渡すときに必要になる。
+extension View {
+    /// 設定の1ページの形にそろえる。
+    ///
+    /// `.grouped` は、システム設定と同じ「角の丸い箱に項目を並べる」見た目。幅は固定し、
+    /// 高さは中身に任せる。窓はこの大きさに合わせて、タブを切り替えるたびに伸び縮みする。
+    func settingsPage() -> some View {
+        formStyle(.grouped)
+            .frame(width: 460)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-private struct GeneralSettings: View {
+struct GeneralSettings: View {
     @Bindable var model: AppModel
 
     var body: some View {
@@ -58,7 +46,7 @@ private struct GeneralSettings: View {
     }
 }
 
-private struct InputSettings: View {
+struct InputSettings: View {
     @Bindable var model: AppModel
 
     var body: some View {
@@ -82,14 +70,14 @@ private struct InputSettings: View {
     }
 }
 
-private struct WindowSettings: View {
+struct WindowSettings: View {
     @Bindable var model: AppModel
 
     var body: some View {
         Form {
             Toggle(isOn: $model.arrangesWindows) {
                 Text("ショートカットで動かす")
-                Text("⌃⌥← などで、手前のウィンドウを半分や 1/3 に並べる。キーはメニューの「ウィンドウ」に出る。Rectangle と一緒に使うなら切る。メニューから選んで動かすのは、切っていてもできる。")
+                Text("⌃⌥← などで、手前のウィンドウを半分や 1/3 に並べる。キーは右クリックのメニューの「ウィンドウ」に出る。Rectangle と一緒に使うなら切る。メニューから選んで動かすのは、切っていてもできる。")
             }
             Toggle(isOn: $model.snapsWindows) {
                 Text("ドラッグで端に寄せて並べる")
@@ -99,7 +87,7 @@ private struct WindowSettings: View {
     }
 }
 
-private struct MirrorSettings: View {
+struct MirrorSettings: View {
     @Bindable var mirror: MirrorModel
 
     var body: some View {
@@ -138,7 +126,7 @@ private struct MirrorSettings: View {
                 Toggle("外をクリックしても閉じない", isOn: $mirror.isPinned)
                 Toggle(isOn: $mirror.opensFromNotch) {
                     Text("ノッチのクリックで開く")
-                    Text("ノッチの無い Mac では、メニューの「鏡を出す」で開く。")
+                    Text("ノッチの無い Mac では、アイコンの右クリックのメニューの「鏡を出す」で開く。")
                 }
             }
 

@@ -11,6 +11,8 @@
 #    1回のドラッグの解釈（SnapTracker）も、押す・動かす・離すを並べて渡せば試せる。
 # 4. 鏡のノッチの位置・窓の置き場所・画質（NotchGeometry / PanelPlacement / Quality）。
 #    どれも NSScreen やカメラから取り出した数字だけを受け取るので、ノッチもカメラも要らない。
+# 5. カレンダーの月の表と、予定をどの日に出すか（CalendarGrid）。
+#    暦と日付だけを受け取るので、カレンダー.app の予定も、この Mac の週の始まりや地域も要らない。
 #
 # それぞれ @main を持つ別の実行ファイルにする。1つにまとめると入口がいくつもできてしまう。
 set -e
@@ -22,6 +24,7 @@ swiftc -o "$out/watcher" One/CommandKeyWatcher.swift One/Log.swift Tests/Watcher
 swiftc -o "$out/window" One/WindowLayout.swift One/WindowHistory.swift Tests/WindowLayoutTests.swift
 swiftc -o "$out/snap" One/WindowLayout.swift One/WindowHistory.swift One/SnapLayout.swift Tests/SnapLayoutTests.swift
 swiftc -o "$out/mirror" One/NotchGeometry.swift One/PanelPlacement.swift One/Quality.swift Tests/MirrorTests.swift
+swiftc -o "$out/calendar" One/CalendarGrid.swift Tests/CalendarGridTests.swift
 
 # どれかが落ちても、ほかの結果も見えるように全部走らせてから終える。
 status=0
@@ -32,4 +35,6 @@ echo
 "$out/snap" || status=1
 echo
 "$out/mirror" || status=1
+echo
+"$out/calendar" || status=1
 exit $status

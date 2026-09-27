@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import SwiftUI
 
@@ -21,6 +22,16 @@ struct Shortcut {
         if modifiers.contains(.option) { flags |= optionKey }
         if modifiers.contains(.control) { flags |= controlKey }
         return UInt32(flags)
+    }
+
+    /// `NSMenuItem` が受け取る形の修飾キー。メニューの項目の右にキーを出すのに使う。
+    var modifierFlags: NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if modifiers.contains(.command) { flags.insert(.command) }
+        if modifiers.contains(.shift) { flags.insert(.shift) }
+        if modifiers.contains(.option) { flags.insert(.option) }
+        if modifiers.contains(.control) { flags.insert(.control) }
+        return flags
     }
 }
 

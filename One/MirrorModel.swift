@@ -5,8 +5,8 @@ import AVFoundation
 ///
 /// 元は Kagami という別のアプリだった。カメラ・ノッチ・鏡の窓はそのまま持ってきて、
 /// Kagami の AppDelegate がしていた「部品をつなぐ」と「メニュー」をここに移した。
-/// Kagami にあったメニューバーのアイコンは持ってきていない。鏡は One のメニューから開き、
-/// 設定は One の設定の窓（`SettingsView` の「鏡」タブ）で変える。
+/// Kagami にあったメニューバーのアイコンは持ってきていない。鏡は One のアイコンの右クリックの
+/// メニューから開き、設定は One の設定の窓（`SettingsView.swift` の「鏡」タブ）で変える。
 ///
 /// `AppModel` に混ぜずに分けたのは、部品がどれも `@MainActor`（メインスレッドでだけ触る、
 /// という印）で書かれているから。印の無い `AppModel` の init からは作れない。
@@ -128,11 +128,13 @@ final class MirrorModel {
 
     // MARK: - 出す・隠す
 
-    /// メニューや設定の窓から出し入れする。窓はマウスの真下（の画面の上端）に出す。
-    ///
-    /// メニューはメニューバーの ⌘ のすぐ下に開くので、項目を押したときのマウスは
-    /// だいたいアイコンの下にある。`MenuBarExtra` はアイコンの位置を教えてくれないので、
-    /// これで代える。
+    /// `midX` の真下（その画面の、メニューバーのすぐ下）に出す。出ていれば隠す。
+    /// メニューバーのアイコンの右クリックのメニューから、アイコンの下に出すのに使う。
+    func toggle(midX: CGFloat, on screen: NSScreen) {
+        controller.toggle(at: .init(midX: midX, screen: screen))
+    }
+
+    /// 設定の窓の「鏡を出して確かめる」から出し入れする。窓はマウスの真下（の画面の上端）に出す。
     func toggleUnderMouse() {
         let point = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main else { return }
@@ -143,7 +145,7 @@ final class MirrorModel {
 
     /// 開くたびに作り直す。カメラの抜き差しや画質の対応は、開いた時点のものを出したい。
     ///
-    /// 設定の窓の「鏡」タブ（`SettingsView`）と同じ項目を、AppKit の `NSMenu` で組み直している。
+    /// 設定の窓の「鏡」タブ（`MirrorSettings`）と同じ項目を、AppKit の `NSMenu` で組み直している。
     /// SwiftUI で書いたメニューを NSView の右クリックに渡す道（`NSHostingMenu`）は
     /// macOS 15 からで、One は 14 でも動かしたい。
     private func makeMenu() -> NSMenu {
@@ -210,26 +212,4 @@ final class MirrorModel {
         item.submenu = submenu
         return item
     }
-}
-
-/// 押されたらクロージャを呼ぶメニューの項目。
-///
-/// `NSMenuItem` は押されたときの行き先を「誰の（target）どのメソッドか（action）」で持ち、
-/// そのメソッドは `@objc` を付けられる NSObject の子にしか書けない。`MirrorModel` は
-/// NSObject の子ではないので、項目自身を行き先にして、渡されたクロージャを呼ぶ。
-private final class ClosureMenuItem: NSMenuItem {
-    private let handler: () -> Void
-
-    init(_ title: String, checked: Bool = false, handler: @escaping () -> Void) {
-        self.handler = handler
-        super.init(title: title, action: #selector(invoke), keyEquivalent: "")
-        // target は弱参照だが、項目はメニューが持っているので消えない。
-        target = self
-        state = checked ? .on : .off
-    }
-
-    @available(*, unavailable)
-    required init(coder: NSCoder) { fatalError() }
-
-    @objc private func invoke() { handler() }
 }
