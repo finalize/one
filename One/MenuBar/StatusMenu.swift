@@ -8,6 +8,7 @@ import AppKit
 @MainActor
 final class StatusMenu {
     private let model: AppModel
+    private let windows: WindowModel
     private let mirror: MirrorModel
     private let monitor: MonitorModel
     private let settings: SettingsWindow
@@ -18,8 +19,9 @@ final class StatusMenu {
     /// モニタの数字の項目。開いている間だけ持つ。
     private var monitorItems: [NSMenuItem] = []
 
-    init(model: AppModel, mirror: MirrorModel, monitor: MonitorModel, settings: SettingsWindow) {
+    init(model: AppModel, windows: WindowModel, mirror: MirrorModel, monitor: MonitorModel, settings: SettingsWindow) {
         self.model = model
+        self.windows = windows
         self.mirror = mirror
         self.monitor = monitor
         self.settings = settings
@@ -90,10 +92,10 @@ final class StatusMenu {
         for (index, group) in Self.windowGroups.enumerated() {
             if index > 0 { menu.addItem(.separator()) }
             for action in group {
-                let item = ClosureMenuItem(action.title) { [unowned self] in model.arrange(action) }
+                let item = ClosureMenuItem(action.title) { [unowned self] in windows.arrange(action) }
                 // ショートカットを登録しているときだけ、右側にキーを出す。
                 // 切っているのに出すと、押せば効くように見えてしまう。
-                if model.arrangesWindows {
+                if windows.arrangesWindows {
                     item.keyEquivalent = String(action.shortcut.key.character)
                     item.keyEquivalentModifierMask = action.shortcut.modifierFlags
                 }

@@ -150,7 +150,7 @@ final class HotKeys {
     /// なので self は `userData`（C の `void *`）として別に渡し、呼ばれたときに取り出す。
     ///
     /// `passUnretained` は「参照カウントを増やさずにポインタにする」。self の寿命は
-    /// 持ち主（`AppModel`）が保証していて、self が消えるときには `deinit` で窓口ごと
+    /// 持ち主（`WindowModel`）が保証していて、self が消えるときには `deinit` で窓口ごと
     /// 外すので、ここで self を掴み続ける必要は無い。
     private func installHandler() {
         guard handler == nil else { return }

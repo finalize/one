@@ -42,7 +42,7 @@ final class CommandKeyWatcher {
     ///
     /// 大事な注意: アクセシビリティの許可が無いとき、この呼び出しは **失敗しない**。
     /// エラーも出さず、ただハンドラが一度も呼ばれない。なので許可が下りたことを
-    /// 確かめてから呼ぶ（AppModel 側でやっている）。
+    /// 確かめてから呼ぶ（許可は AppModel が見ていて、下りたら InputModel.startWatching が呼ぶ）。
     func start() {
         guard monitor == nil else { return }
 

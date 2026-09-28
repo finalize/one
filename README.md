@@ -691,7 +691,9 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 | `One/Shared/ClosureMenuItem.swift` | 押されたらクロージャを呼ぶメニューの項目 |
 | `One/Settings/SettingsWindow.swift` | 設定の窓。タブを AppKit で組む |
 | `One/Settings/SettingsPage.swift` | 設定の窓の各タブの形をそろえる。各タブの中身は機能ごとのフォルダの `…Settings.swift` |
-| `One/App/AppModel.swift` | 状態と、状態を変える手続き。許可の監視もここ |
+| `One/App/AppModel.swift` | アプリ全体の状態。アクセシビリティの許可、ログイン項目、⌘ の左クリックの割り当て |
+| `One/Input/InputModel.swift` | 英かなの状態。今のモード、英数側・かな側の入力ソース、⌘ の見張りを始める |
+| `One/Windows/WindowModel.swift` | ウィンドウを並べる設定（ショートカット・ドラッグ）と、並べる手順への入口 |
 | `One/Input/CommandKeyWatcher.swift` | 単独押しの判定。このアプリの本体 |
 | `One/Input/InputSource.swift` | 入力ソースの切り替え。Carbon の C API をここに閉じ込めている |
 | `One/Windows/HotKeys.swift` | ウィンドウのショートカット。キーの表と、Carbon のショートカットの API |
@@ -720,10 +722,10 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 | `One/Monitor/Monitor.swift` | 1秒あたりの量や割合の計算と、数字の書き方、2段への詰め方。OS にも画面にも触らない |
 | `One/MenuBar/StatusImage.swift` | ⌘ とモードの字と数字を、メニューバーに載せる1枚の画像に描く |
 
-`AppDelegate` → `AppModel` → `CommandKeyWatcher` → `InputSource` の順に読むと、
-「メニューバーに出す」「⌘ を見張る」「切り替える」の3つに分かれているのが見える。
+`InputModel` → `CommandKeyWatcher` → `InputSource` の順に読むと、
+「状態を持つ」「⌘ を見張る」「切り替える」の3つに分かれているのが見える。
 
-ウィンドウのほうは `HotKeys` → `WindowArranger` → `WindowLayout` → `AXWindow` の順。
+ウィンドウのほうは `WindowModel` → `HotKeys` → `WindowArranger` → `WindowLayout` → `AXWindow` の順。
 「キーを受け取る」「行き先を決める」「動かす」に分かれていて、真ん中の計算だけが
 画面もウィンドウも使わずに試せる。
 
@@ -898,6 +900,7 @@ TypeScript / Go からの対応:
   self を強く掴む。Xcode 27 はこれを警告する（Kagami から持ってきた `Camera.start` で出た）。
 - **`@MainActor` の印が付いた型は、印の無い型の init からは作れない。** 鏡の部品は `@MainActor` で
   書かれていたので、印の無い `AppModel` に混ぜず、`MirrorModel` を別に作って `AppDelegate` に持たせた。
+  （その後、英かなとウィンドウも `InputModel` と `WindowModel` に分け、機能ごとに Model を持つ形にそろえた）
 
 カレンダーを足したときに引っかかったこと:
 

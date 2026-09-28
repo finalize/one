@@ -9,14 +9,18 @@ import SwiftUI
 @MainActor
 final class SettingsWindow {
     private let model: AppModel
+    private let input: InputModel
+    private let windows: WindowModel
     private let mirror: MirrorModel
     private let calendar: CalendarModel
     private let monitor: MonitorModel
     /// 閉じても捨てずに持っておく。次に開いたとき、前に見ていたタブのまま出る。
     private var window: NSWindow?
 
-    init(model: AppModel, mirror: MirrorModel, calendar: CalendarModel, monitor: MonitorModel) {
+    init(model: AppModel, input: InputModel, windows: WindowModel, mirror: MirrorModel, calendar: CalendarModel, monitor: MonitorModel) {
         self.model = model
+        self.input = input
+        self.windows = windows
         self.mirror = mirror
         self.calendar = calendar
         self.monitor = monitor
@@ -37,8 +41,8 @@ final class SettingsWindow {
         let tabs = SettingsTabs()
         tabs.tabStyle = .toolbar
         tabs.addTabViewItem(page("一般", "gearshape", GeneralSettings(model: model, calendar: calendar)))
-        tabs.addTabViewItem(page("英かな", "command", InputSettings(model: model)))
-        tabs.addTabViewItem(page("ウィンドウ", "uiwindow.split.2x1", WindowSettings(model: model)))
+        tabs.addTabViewItem(page("英かな", "command", InputSettings(input: input)))
+        tabs.addTabViewItem(page("ウィンドウ", "uiwindow.split.2x1", WindowSettings(windows: windows)))
         tabs.addTabViewItem(page("鏡", "web.camera", MirrorSettings(mirror: mirror)))
         tabs.addTabViewItem(page("カレンダー", "calendar", CalendarSettings(model: model, calendar: calendar)))
         tabs.addTabViewItem(page("モニタ", "gauge.with.dots.needle.33percent", MonitorSettings(monitor: monitor)))

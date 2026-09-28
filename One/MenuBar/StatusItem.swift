@@ -9,13 +9,15 @@ import AppKit
 @MainActor
 final class StatusItemController: NSObject {
     private let model: AppModel
+    private let input: InputModel
     private let monitor: MonitorModel
     private let calendar: CalendarController
     private let menu: StatusMenu
     private let statusItem: NSStatusItem
 
-    init(model: AppModel, monitor: MonitorModel, calendar: CalendarController, menu: StatusMenu) {
+    init(model: AppModel, input: InputModel, monitor: MonitorModel, calendar: CalendarController, menu: StatusMenu) {
         self.model = model
+        self.input = input
         self.monitor = monitor
         self.calendar = calendar
         self.menu = menu
@@ -62,8 +64,8 @@ final class StatusItemController: NSObject {
                 let image = NSImage(systemSymbolName: "command", accessibilityDescription: "One")
                 image?.isTemplate = true
                 button.image = image
-                if model.showsMode {
-                    button.title = model.menuBarLabel
+                if input.showsMode {
+                    button.title = input.menuBarLabel
                     button.imagePosition = .imageLeading
                 } else {
                     button.title = ""
@@ -72,7 +74,7 @@ final class StatusItemController: NSObject {
             } else {
                 // 数字を2段に並べるには、⌘ もモードの字も数字も1枚の画像に描くしかない（`StatusImage`）。
                 button.image = StatusImage.make(
-                    mode: model.showsMode ? model.menuBarLabel : nil,
+                    mode: input.showsMode ? input.menuBarLabel : nil,
                     columns: columns,
                     height: NSStatusBar.system.thickness
                 )
