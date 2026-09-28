@@ -13,6 +13,8 @@
 #    どれも NSScreen やカメラから取り出した数字だけを受け取るので、ノッチもカメラも要らない。
 # 5. カレンダーの月の表と、予定をどの日に出すか（CalendarGrid）。
 #    暦と日付だけを受け取るので、カレンダー.app の予定も、この Mac の週の始まりや地域も要らない。
+# 6. メニューバーに出す数字の計算と書き方（Monitor）。
+#    OS から読んだ数を引数で受け取るので、実際の CPU やネットワークは要らない。
 #
 # それぞれ @main を持つ別の実行ファイルにする。1つにまとめると入口がいくつもできてしまう。
 set -e
@@ -25,6 +27,7 @@ swiftc -o "$out/window" One/WindowLayout.swift One/WindowHistory.swift Tests/Win
 swiftc -o "$out/snap" One/WindowLayout.swift One/WindowHistory.swift One/SnapLayout.swift Tests/SnapLayoutTests.swift
 swiftc -o "$out/mirror" One/NotchGeometry.swift One/PanelPlacement.swift One/Quality.swift Tests/MirrorTests.swift
 swiftc -o "$out/calendar" One/CalendarGrid.swift Tests/CalendarGridTests.swift
+swiftc -o "$out/monitor" One/Monitor.swift Tests/MonitorTests.swift
 
 # どれかが落ちても、ほかの結果も見えるように全部走らせてから終える。
 status=0
@@ -37,4 +40,6 @@ echo
 "$out/mirror" || status=1
 echo
 "$out/calendar" || status=1
+echo
+"$out/monitor" || status=1
 exit $status

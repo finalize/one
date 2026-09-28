@@ -11,13 +11,15 @@ final class SettingsWindow {
     private let model: AppModel
     private let mirror: MirrorModel
     private let calendar: CalendarModel
+    private let monitor: MonitorModel
     /// 閉じても捨てずに持っておく。次に開いたとき、前に見ていたタブのまま出る。
     private var window: NSWindow?
 
-    init(model: AppModel, mirror: MirrorModel, calendar: CalendarModel) {
+    init(model: AppModel, mirror: MirrorModel, calendar: CalendarModel, monitor: MonitorModel) {
         self.model = model
         self.mirror = mirror
         self.calendar = calendar
+        self.monitor = monitor
     }
 
     func show() {
@@ -39,6 +41,7 @@ final class SettingsWindow {
         tabs.addTabViewItem(page("ウィンドウ", "uiwindow.split.2x1", WindowSettings(model: model)))
         tabs.addTabViewItem(page("鏡", "web.camera", MirrorSettings(mirror: mirror)))
         tabs.addTabViewItem(page("カレンダー", "calendar", CalendarSettings(model: model, calendar: calendar)))
+        tabs.addTabViewItem(page("モニタ", "gauge.with.dots.needle.33percent", MonitorSettings(monitor: monitor)))
 
         let window = NSWindow(contentViewController: tabs)
         // 大きさは中身が決める。端を掴んで変えられないように、resizable を外す。
