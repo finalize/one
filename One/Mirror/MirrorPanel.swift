@@ -1,6 +1,5 @@
 import AppKit
 import AVFoundation
-import Carbon.HIToolbox
 
 /// 鏡の窓。
 ///
@@ -12,10 +11,9 @@ import Carbon.HIToolbox
 /// - `.titled` + 透明なタイトルバー … 見た目は枠無しだが、角丸・影・端を掴んでのリサイズは
 ///   普通の窓のものがそのまま使える。`.borderless` にするとリサイズが効かない
 /// - `.floating` … 他の窓より手前に出る
-final class MirrorPanel: NSPanel {
-    /// Esc か ⌘W が押された。
-    var onRequestHide: (() -> Void)?
-
+///
+/// Esc と ⌘W で閉じるのは、元の `DismissablePanel` がする。
+final class MirrorPanel: DismissablePanel {
     init() {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 250),
@@ -40,26 +38,6 @@ final class MirrorPanel: NSPanel {
         }
     }
 
-    override var canBecomeKey: Bool { true }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == UInt16(kVK_Escape) {
-            onRequestHide?()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-
-    /// One はメニューバーだけのアプリで、⌘W を「窓を閉じる」につなぐメニューを当てにできない。
-    /// ここで拾い、Esc と同じくカメラも止める道を通す。
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags == .command, event.charactersIgnoringModifiers == "w" {
-            onRequestHide?()
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
-    }
 }
 
 /// カメラの映像を映す面。
@@ -125,7 +103,12 @@ final class MirrorController: NSObject {
     private let preview: PreviewView
     private let message = NSTextField(wrappingLabelWithString: "")
     private let settingsButton = NSButton(title: "システム設定を開く", target: nil, action: nil)
-    private var outsideClickMonitor: Any?
+    /// 外をクリックしたら閉じる（`OutsideClickWatcher`）。
+    ///
+    /// メニューバーの ⌘ へのクリックも外のクリックとして届くので、⌘ を押すと鏡は閉じる。
+    /// ほかの外のクリックと同じ扱いで困らないので、カレンダーと違ってアイコンの上を外していない。
+    /// 見ながら画質などを変えるなら、鏡の上で右クリックする。
+    private let outsideClicks = OutsideClickWatcher()
 
     private enum Keys {
         static let width = "panelWidth"
@@ -161,7 +144,7 @@ final class MirrorController: NSObject {
         get { UserDefaults.standard.bool(forKey: Keys.pinned) }
         set {
             UserDefaults.standard.set(newValue, forKey: Keys.pinned)
-            updateOutsideClickMonitor()
+            updateOutsideClicks()
         }
     }
 
@@ -179,6 +162,7 @@ final class MirrorController: NSObject {
         buildContent()
 
         panel.onRequestHide = { [weak self] in self?.hide() }
+        outsideClicks.onClick = { [weak self] in self?.hide() }
         camera.onConfigured = { [weak self] in
             self?.preview.applyMirroring()
             self?.onChange?()
@@ -249,7 +233,7 @@ final class MirrorController: NSObject {
         panel.orderFrontRegardless()
         panel.makeKey()
         camera.start()
-        updateOutsideClickMonitor()
+        updateOutsideClicks()
         onChange?()
     }
 
@@ -257,35 +241,13 @@ final class MirrorController: NSObject {
         guard isVisible else { return }
         panel.orderOut(nil)
         camera.stop()
-        updateOutsideClickMonitor()
+        updateOutsideClicks()
         onChange?()
     }
 
-    /// 外をクリックしたら閉じる。
-    ///
-    /// 窓がキーでなくなったこと（resignKey）では判定しない。フォーカスを奪わないパネルは
-    /// キーになったりならなかったりが状況で揺れるうえ、メニューバーのアイコンやノッチを
-    /// クリックしたときに「閉じた直後にトグルでまた開く」が起きやすい。
-    ///
-    /// グローバルモニタは **他のアプリ宛て**のクリックしか受け取らない。ノッチの小窓や
-    /// 鏡そのもの（右クリックのメニュー）は One の窓なのでここに来ず、トグルとぶつからない。
-    ///
-    /// ただしメニューバーの One のアイコン（⌘）へのクリックは、One のものなのにここに来る
-    /// （macOS 27 で確かめた）。なので One のメニューを開くと鏡は閉じる。ほかの外のクリックと
-    /// 同じ扱いで困らないので、そのままにしてある。見ながら画質などを変えるなら鏡の上で右クリック。
-    /// マウスのクリックを見るだけならアクセシビリティの許可は要らない。
-    private func updateOutsideClickMonitor() {
-        let wants = isVisible && !isPinned
-        if wants, outsideClickMonitor == nil {
-            outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
-                matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-            ) { [weak self] _ in
-                MainActor.assumeIsolated { self?.hide() }
-            }
-        } else if !wants, let monitor = outsideClickMonitor {
-            NSEvent.removeMonitor(monitor)
-            outsideClickMonitor = nil
-        }
+    /// 「外をクリックしても閉じない」を入れていなければ、出ている間は外のクリックを見張る。
+    private func updateOutsideClicks() {
+        outsideClicks.isActive = isVisible && !isPinned
     }
 
     private func saveSize() {

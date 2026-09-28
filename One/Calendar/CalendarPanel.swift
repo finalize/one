@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 import SwiftUI
 
 /// カレンダーの小窓。メニューバーのアイコンの真下に出る。
@@ -8,10 +7,9 @@ import SwiftUI
 /// 開いても前面のアプリは変わらない。違うのは、枠もタイトルバーも無い（`.borderless`）こと。
 /// 大きさを変えることも動かすことも無いので、タイトルバーの形を借りる理由が無い。
 /// 角の丸みと、後ろが透ける地は `NSVisualEffectView` に持たせる。
-final class CalendarPanel: NSPanel {
-    /// Esc か ⌘W が押された。
-    var onRequestHide: (() -> Void)?
-
+///
+/// Esc と ⌘W で閉じるのは、元の `DismissablePanel` がする。
+final class CalendarPanel: DismissablePanel {
     init(content: NSView) {
         super.init(
             contentRect: NSRect(origin: .zero, size: content.fittingSize),
@@ -47,26 +45,6 @@ final class CalendarPanel: NSPanel {
         ])
         contentView = background
     }
-
-    /// 枠の無い窓は、既定ではキーになれない。Esc を受けたいのでなれるようにする。
-    override var canBecomeKey: Bool { true }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == UInt16(kVK_Escape) {
-            onRequestHide?()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags == .command, event.charactersIgnoringModifiers == "w" {
-            onRequestHide?()
-            return true
-        }
-        return super.performKeyEquivalent(with: event)
-    }
 }
 
 /// フォーカスを持っていない窓でも、1回目のクリックから日や予定を押せるようにする。
@@ -80,20 +58,23 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 final class CalendarController {
     private let model: CalendarModel
     private let panel: CalendarPanel
-    private var outsideClickMonitor: Any?
+    private let outsideClicks = OutsideClickWatcher()
 
     /// 外のクリックとみなさない範囲（画面の座標）。メニューバーの One のアイコン。
     ///
-    /// アイコンへのクリックは、One のものなのに外のクリックとしてグローバルモニタにも届く
-    /// （鏡で確かめた。`MirrorController` の注釈）。ここで閉じると、続いてアイコンの
-    /// クリックの処理（出し入れ）が走って、また開いてしまう。アイコンの上では閉じずに、
-    /// 出し入れはアイコンの側に任せる。
-    var ignoredArea: (() -> NSRect?)?
+    /// アイコンへのクリックは、One のものなのに外のクリックとしても届く（`OutsideClickWatcher`）。
+    /// ここで閉じると、続いてアイコンのクリックの処理（出し入れ）が走って、また開いてしまう。
+    /// アイコンの上では閉じずに、出し入れはアイコンの側に任せる。
+    var ignoredArea: (() -> NSRect?)? {
+        get { outsideClicks.ignoredArea }
+        set { outsideClicks.ignoredArea = newValue }
+    }
 
     init(model: CalendarModel) {
         self.model = model
         panel = CalendarPanel(content: FirstMouseHostingView(rootView: CalendarView(model: model)))
         panel.onRequestHide = { [weak self] in self?.hide() }
+        outsideClicks.onClick = { [weak self] in self?.hide() }
         model.onOpenedOtherApp = { [weak self] in self?.hide() }
     }
 
@@ -116,29 +97,12 @@ final class CalendarController {
         // 鏡と同じく、One は前面のアプリではないので前に出してからキーにする（Esc を受けるため）。
         panel.orderFrontRegardless()
         panel.makeKey()
-        updateOutsideClickMonitor()
+        outsideClicks.isActive = true
     }
 
     func hide() {
         guard isVisible else { return }
         panel.orderOut(nil)
-        updateOutsideClickMonitor()
-    }
-
-    private func updateOutsideClickMonitor() {
-        if isVisible, outsideClickMonitor == nil {
-            outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
-                matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-            ) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    if let area = self.ignoredArea?(), area.contains(NSEvent.mouseLocation) { return }
-                    self.hide()
-                }
-            }
-        } else if !isVisible, let monitor = outsideClickMonitor {
-            NSEvent.removeMonitor(monitor)
-            outsideClickMonitor = nil
-        }
+        outsideClicks.isActive = false
     }
 }

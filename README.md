@@ -704,7 +704,9 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 | `One/Mirror/NotchTrigger.swift` | ノッチの上に透明な小窓を置いてクリックを拾う |
 | `One/Mirror/NotchGeometry.swift` | ノッチの矩形の計算。画面には触らない |
 | `One/Mirror/MirrorPanel.swift` | 鏡の窓。フォーカスを奪わないリサイズ可能なパネル、鏡像、外クリックで閉じる |
-| `One/Shared/PanelPlacement.swift` | 鏡の窓をどこに出すかの計算 |
+| `One/Shared/PanelPlacement.swift` | 鏡とカレンダーの小窓を、どこに出すかの計算 |
+| `One/Shared/DismissablePanel.swift` | Esc・⌘W で閉じたいことを持ち主に知らせるパネル。鏡とカレンダーの小窓の元 |
+| `One/Shared/OutsideClickWatcher.swift` | One の窓の外がクリックされたら知らせる。小窓を外のクリックで閉じるのに使う |
 | `One/Mirror/Camera.swift` | カメラのセッションの開始・停止、カメラと画質の切り替え |
 | `One/Mirror/Quality.swift` | 画質の選択肢 |
 | `One/Calendar/CalendarModel.swift` | カレンダーの状態。どの月・どの日を出すか。予定を EventKit から読む |
