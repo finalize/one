@@ -685,7 +685,9 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 | ファイル | 中身 |
 | --- | --- |
 | `One/App/OneApp.swift` | 入口。AppKit のアプリを起動して `AppDelegate` に渡すだけ |
-| `One/App/AppDelegate.swift` | 部品をつなぐ。メニューバーの ⌘（左クリックでカレンダー、右クリックでメニュー） |
+| `One/App/AppDelegate.swift` | 部品を作ってつなぐだけ。動きは書かない |
+| `One/MenuBar/StatusItem.swift` | メニューバーの ⌘（`StatusItemController`）。見た目と、左右のクリックの振り分け |
+| `One/MenuBar/StatusMenu.swift` | ⌘ の右クリックのメニュー。開いている間はモニタの数字を書き換える |
 | `One/Shared/ClosureMenuItem.swift` | 押されたらクロージャを呼ぶメニューの項目 |
 | `One/Settings/SettingsWindow.swift` | 設定の窓。タブを AppKit で組む |
 | `One/Settings/SettingsPage.swift` | 設定の窓の各タブの形をそろえる。各タブの中身は機能ごとのフォルダの `…Settings.swift` |
@@ -733,7 +735,7 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 「クリックを拾う」「つなぐ」「窓を出す」「映す」に分かれていて、ノッチの位置と窓の置き場所の
 計算（`NotchGeometry` / `PanelPlacement`）だけが、画面もカメラも使わずに試せる。
 
-カレンダーは `AppDelegate`（左クリック）→ `CalendarPanel`（の `CalendarController`、小窓）→
+カレンダーは `StatusItemController`（左クリック）→ `CalendarPanel`（の `CalendarController`、小窓）→
 `CalendarView`（表示）→ `CalendarModel`（予定を読む）。月の表と、予定をどの日に出すかの計算
 （`CalendarGrid`）だけが、画面もカレンダー.app も使わずに試せる。
 
@@ -904,7 +906,7 @@ TypeScript / Go からの対応:
   `performClick` で開き、閉じたら外す（Kagami と同じ）。
 - **AppKit のボタンは `@Observable` の値の変化で描き直されない。** SwiftUI の画面なら勝手に追う。
   `withObservationTracking` で読んだ値を見張り、変わったら（呼ばれるのは変わる直前なので）次の回に
-  回して描き直し、また見張り直す（`AppDelegate.updateButton`）。
+  回して描き直し、また見張り直す（`StatusItemController.updateButton`）。
 - **アプリの基準の言語が英語だと、日付も英語で書かれる。** Mac の言語が日本語でも、
   `Date.formatted()` の月や曜日が英語になった。`developmentRegion` を `ja` にして直した。
 - **入れ子のクロージャの中では `self.` を省けない。** `MainActor.assumeIsolated { … }` の中で
