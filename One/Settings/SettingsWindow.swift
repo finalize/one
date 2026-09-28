@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// タブは `NSTabViewController` の `.toolbar` の形で組む。SwiftUI の `Settings` シーンが
 /// 裏でしていることと同じで、見た目も同じになる。各タブの中身は SwiftUI のまま
-/// （`SettingsView.swift`）、`NSHostingController` で包んで載せる。
+/// （機能ごとのフォルダの `…Settings.swift`）、`NSHostingController` で包んで載せる。
 @MainActor
 final class SettingsWindow {
     private let model: AppModel

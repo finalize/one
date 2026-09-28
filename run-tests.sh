@@ -22,12 +22,12 @@ cd "$(dirname "$0")"
 out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 
-swiftc -o "$out/watcher" One/CommandKeyWatcher.swift One/Log.swift Tests/WatcherTests.swift
-swiftc -o "$out/window" One/WindowLayout.swift One/WindowHistory.swift Tests/WindowLayoutTests.swift
-swiftc -o "$out/snap" One/WindowLayout.swift One/WindowHistory.swift One/SnapLayout.swift Tests/SnapLayoutTests.swift
-swiftc -o "$out/mirror" One/NotchGeometry.swift One/PanelPlacement.swift One/Quality.swift Tests/MirrorTests.swift
-swiftc -o "$out/calendar" One/CalendarGrid.swift Tests/CalendarGridTests.swift
-swiftc -o "$out/monitor" One/Monitor.swift Tests/MonitorTests.swift
+swiftc -o "$out/watcher" One/Input/CommandKeyWatcher.swift One/App/Log.swift Tests/WatcherTests.swift
+swiftc -o "$out/window" One/Windows/WindowLayout.swift One/Windows/WindowHistory.swift Tests/WindowLayoutTests.swift
+swiftc -o "$out/snap" One/Windows/WindowLayout.swift One/Windows/WindowHistory.swift One/Windows/SnapLayout.swift Tests/SnapLayoutTests.swift
+swiftc -o "$out/mirror" One/Mirror/NotchGeometry.swift One/Shared/PanelPlacement.swift One/Mirror/Quality.swift Tests/MirrorTests.swift
+swiftc -o "$out/calendar" One/Calendar/CalendarGrid.swift Tests/CalendarGridTests.swift
+swiftc -o "$out/monitor" One/Monitor/Monitor.swift Tests/MonitorTests.swift
 
 # どれかが落ちても、ほかの結果も見えるように全部走らせてから終える。
 status=0

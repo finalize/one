@@ -1,0 +1,25 @@
+import SwiftUI
+
+struct InputSettings: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("左 ⌘", value: model.isSwapped ? model.kanaName : model.asciiName)
+                LabeledContent("右 ⌘", value: model.isSwapped ? model.asciiName : model.kanaName)
+                Toggle("左右を入れ替える", isOn: $model.isSwapped)
+            } footer: {
+                Text("⌘ を押して、ほかのキーもクリックも挟まずに離すと切り替わる。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Toggle の見出しに Text を2つ書くと、2つ目は説明として小さく出る。
+            Toggle(isOn: $model.showsMode) {
+                Text("メニューバーに A / あ も出す")
+                Text("macOS の入力メニューが同じものを出しているなら、二重になるだけなので要らない。")
+            }
+        }
+    }
+}

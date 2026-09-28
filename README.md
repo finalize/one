@@ -667,39 +667,54 @@ defaults read com.apple.TextInputMenu visible   # 1 なら system 側が出て�
 
 ## 読む順番
 
+`One/` の下は機能ごとのフォルダに分けてある。設定の窓の各タブの中身（`…Settings.swift`）も、それぞれの
+機能のフォルダに置いた。
+
+| フォルダ | 機能 |
+| --- | --- |
+| `App/` | 入口と、部品をつなぐところ。アプリ全体の状態と「一般」タブ |
+| `Input/` | 左右の ⌘ で英かなを切り替える |
+| `Windows/` | ウィンドウを並べる（ショートカットとドラッグ） |
+| `Mirror/` | ノッチのクリックで出す鏡 |
+| `Calendar/` | ⌘ の左クリックで出すカレンダー |
+| `Monitor/` | メニューバーに出すネットワーク・CPU・メモリ・ディスクの数字 |
+| `MenuBar/` | メニューバーの ⌘ のアイコン |
+| `Settings/` | 設定の窓 |
+| `Shared/` | 2つ以上の機能で使う小さな部品 |
+
 | ファイル | 中身 |
 | --- | --- |
-| `One/OneApp.swift` | 入口。AppKit のアプリを起動して `AppDelegate` に渡すだけ |
-| `One/AppDelegate.swift` | 部品をつなぐ。メニューバーの ⌘（左クリックでカレンダー、右クリックでメニュー） |
-| `One/ClosureMenuItem.swift` | 押されたらクロージャを呼ぶメニューの項目 |
-| `One/SettingsWindow.swift` | 設定の窓。タブを AppKit で組む |
-| `One/SettingsView.swift` | 設定の窓の各タブの中身（SwiftUI） |
-| `One/AppModel.swift` | 状態と、状態を変える手続き。許可の監視もここ |
-| `One/CommandKeyWatcher.swift` | 単独押しの判定。このアプリの本体 |
-| `One/InputSource.swift` | 入力ソースの切り替え。Carbon の C API をここに閉じ込めている |
-| `One/HotKeys.swift` | ウィンドウのショートカット。キーの表と、Carbon のショートカットの API |
-| `One/WindowArranger.swift` | ウィンドウを動かす手順。下の3つをつなぐだけ |
-| `One/WindowLayout.swift` | 行き先の計算。画面にもウィンドウにも触らない |
-| `One/WindowHistory.swift` | 元に戻す先の記録 |
-| `One/AXWindow.swift` | 他のアプリのウィンドウの読み書き。Accessibility API をここに閉じ込めている |
-| `One/DragSnapper.swift` | ドラッグでのスナップ。マウスを覗き、`SnapTracker` の言うとおりに動かす |
-| `One/SnapLayout.swift` | 端の判定と配置、1回のドラッグの解釈（`SnapTracker`）。画面にもウィンドウにも触らない |
-| `One/SnapPreview.swift` | ドラッグ中に行き先を見せる半透明の枠 |
-| `One/MirrorModel.swift` | 鏡の部品をつなぎ、メニューに状態を見せる。鏡の上の右クリックのメニューもここ |
-| `One/NotchTrigger.swift` | ノッチの上に透明な小窓を置いてクリックを拾う |
-| `One/NotchGeometry.swift` | ノッチの矩形の計算。画面には触らない |
-| `One/MirrorPanel.swift` | 鏡の窓。フォーカスを奪わないリサイズ可能なパネル、鏡像、外クリックで閉じる |
-| `One/PanelPlacement.swift` | 鏡の窓をどこに出すかの計算 |
-| `One/Camera.swift` | カメラのセッションの開始・停止、カメラと画質の切り替え |
-| `One/Quality.swift` | 画質の選択肢 |
-| `One/CalendarModel.swift` | カレンダーの状態。どの月・どの日を出すか。予定を EventKit から読む |
-| `One/CalendarGrid.swift` | 月の表に並べる日と、予定をどの日に出すかの計算。画面にも予定にも触らない |
-| `One/CalendarView.swift` | カレンダーの小窓の中身（SwiftUI）。月の表と、選んだ日の予定 |
-| `One/CalendarPanel.swift` | カレンダーの小窓。⌘ の真下に出し、外クリック・Esc で閉じる |
-| `One/MonitorModel.swift` | メニューバーに出す数字を1秒ごとに測って持つ |
-| `One/SystemSampler.swift` | OS から CPU・メモリ・ネットワーク・ディスクの今の数を読む |
-| `One/Monitor.swift` | 1秒あたりの量や割合の計算と、数字の書き方、2段への詰め方。OS にも画面にも触らない |
-| `One/StatusImage.swift` | ⌘ とモードの字と数字を、メニューバーに載せる1枚の画像に描く |
+| `One/App/OneApp.swift` | 入口。AppKit のアプリを起動して `AppDelegate` に渡すだけ |
+| `One/App/AppDelegate.swift` | 部品をつなぐ。メニューバーの ⌘（左クリックでカレンダー、右クリックでメニュー） |
+| `One/Shared/ClosureMenuItem.swift` | 押されたらクロージャを呼ぶメニューの項目 |
+| `One/Settings/SettingsWindow.swift` | 設定の窓。タブを AppKit で組む |
+| `One/Settings/SettingsPage.swift` | 設定の窓の各タブの形をそろえる。各タブの中身は機能ごとのフォルダの `…Settings.swift` |
+| `One/App/AppModel.swift` | 状態と、状態を変える手続き。許可の監視もここ |
+| `One/Input/CommandKeyWatcher.swift` | 単独押しの判定。このアプリの本体 |
+| `One/Input/InputSource.swift` | 入力ソースの切り替え。Carbon の C API をここに閉じ込めている |
+| `One/Windows/HotKeys.swift` | ウィンドウのショートカット。キーの表と、Carbon のショートカットの API |
+| `One/Windows/WindowArranger.swift` | ウィンドウを動かす手順。下の3つをつなぐだけ |
+| `One/Windows/WindowLayout.swift` | 行き先の計算。画面にもウィンドウにも触らない |
+| `One/Windows/WindowHistory.swift` | 元に戻す先の記録 |
+| `One/Windows/AXWindow.swift` | 他のアプリのウィンドウの読み書き。Accessibility API をここに閉じ込めている |
+| `One/Windows/DragSnapper.swift` | ドラッグでのスナップ。マウスを覗き、`SnapTracker` の言うとおりに動かす |
+| `One/Windows/SnapLayout.swift` | 端の判定と配置、1回のドラッグの解釈（`SnapTracker`）。画面にもウィンドウにも触らない |
+| `One/Windows/SnapPreview.swift` | ドラッグ中に行き先を見せる半透明の枠 |
+| `One/Mirror/MirrorModel.swift` | 鏡の部品をつなぎ、メニューに状態を見せる。鏡の上の右クリックのメニューもここ |
+| `One/Mirror/NotchTrigger.swift` | ノッチの上に透明な小窓を置いてクリックを拾う |
+| `One/Mirror/NotchGeometry.swift` | ノッチの矩形の計算。画面には触らない |
+| `One/Mirror/MirrorPanel.swift` | 鏡の窓。フォーカスを奪わないリサイズ可能なパネル、鏡像、外クリックで閉じる |
+| `One/Shared/PanelPlacement.swift` | 鏡の窓をどこに出すかの計算 |
+| `One/Mirror/Camera.swift` | カメラのセッションの開始・停止、カメラと画質の切り替え |
+| `One/Mirror/Quality.swift` | 画質の選択肢 |
+| `One/Calendar/CalendarModel.swift` | カレンダーの状態。どの月・どの日を出すか。予定を EventKit から読む |
+| `One/Calendar/CalendarGrid.swift` | 月の表に並べる日と、予定をどの日に出すかの計算。画面にも予定にも触らない |
+| `One/Calendar/CalendarView.swift` | カレンダーの小窓の中身（SwiftUI）。月の表と、選んだ日の予定 |
+| `One/Calendar/CalendarPanel.swift` | カレンダーの小窓。⌘ の真下に出し、外クリック・Esc で閉じる |
+| `One/Monitor/MonitorModel.swift` | メニューバーに出す数字を1秒ごとに測って持つ |
+| `One/Monitor/SystemSampler.swift` | OS から CPU・メモリ・ネットワーク・ディスクの今の数を読む |
+| `One/Monitor/Monitor.swift` | 1秒あたりの量や割合の計算と、数字の書き方、2段への詰め方。OS にも画面にも触らない |
+| `One/MenuBar/StatusImage.swift` | ⌘ とモードの字と数字を、メニューバーに載せる1枚の画像に描く |
 
 `AppDelegate` → `AppModel` → `CommandKeyWatcher` → `InputSource` の順に読むと、
 「メニューバーに出す」「⌘ を見張る」「切り替える」の3つに分かれているのが見える。
