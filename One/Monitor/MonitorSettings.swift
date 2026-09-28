@@ -13,7 +13,7 @@ struct MonitorSettings: View {
                 item(.memory, in: .menuBar, "メモリ", "アクティビティモニタの「使用済みメモリ」に合わせた数え方の割合。")
                 item(.disk, in: .menuBar, "ディスクの空き", "起動ディスクの空き。macOS が空けられる分（一時ファイルなど）も含める。")
             } header: {
-                Text("メニューバーの ⌘ の右に出すもの")
+                Text("メニューバーに出すもの（1つでも出すと、⌘ の代わりに数字が出る）")
             } footer: {
                 Text("⌘ にポインタを載せると、ここで選んだものの細かい数（メモリの GB など）が出る。")
                     .font(.caption)

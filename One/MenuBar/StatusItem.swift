@@ -72,7 +72,8 @@ final class StatusItemController: NSObject {
                     button.imagePosition = .imageOnly
                 }
             } else {
-                // 数字を2段に並べるには、⌘ もモードの字も数字も1枚の画像に描くしかない（`StatusImage`）。
+                // モニタの数字を1つでも出しているときは、⌘ を描かずに数字を目印にする。
+                // 数字を2段に並べるには、モードの字も数字も1枚の画像に描くしかない（`StatusImage`）。
                 button.image = StatusImage.make(
                     mode: input.showsMode ? input.menuBarLabel : nil,
                     columns: columns,
