@@ -6,9 +6,9 @@ import Foundation
 /// macOS の入力ソース API は Carbon 時代の C の API で、名前は TIS
 /// （Text Input Sources）で始まる。値は CoreFoundation の型で返ってきて、
 /// Swift からは `Unmanaged` 経由でしか取り出せない。その面倒さをこの型に閉じ込めて、
-/// 呼ぶ側は `InputSource.ascii?.select()` くらいで済むようにしている。
+/// 呼ぶ側は `InputSource.current?.languages` くらいで済むようにしている。
 struct InputSource {
-    /// TIS が扱う生のオブジェクト。切り替えるときにそのまま渡す。
+    /// TIS が扱う生のオブジェクト。プロパティを読むときにそのまま渡す。
     let raw: TISInputSource
 
     /// "com.apple.keylayout.ABC" のような一意な ID。
@@ -40,13 +40,28 @@ struct InputSource {
             && Self.bool(raw, kTISPropertyInputSourceIsEnabled)
     }
 
-    /// この入力ソースに切り替える。成功したら true。
+    // MARK: - 切り替え
+
+    /// JIS キーボードの 英数 / かな キーを押したことにして、前面のアプリに切り替えさせる。
+    /// キーを作れたら true。
     ///
-    /// `@discardableResult` は「戻り値を使わなくても警告を出さない」という指定。
-    /// Swift は既定で戻り値の無視を警告するので、こう書いて許可しておく。
-    @discardableResult
-    func select() -> Bool {
-        TISSelectInputSource(raw) == noErr
+    /// `TISSelectInputSource` で選ぶのはやめた。あれはシステムの選択を書き換えるだけで、
+    /// 前面のアプリには通知で知らせるだけ。Muse はその通知を拾わず、システムは「ひらがな」
+    /// （カーソルの横にも「あ」が出る）なのに、入力欄は英字のまま残った。システムからは既に
+    /// ひらがななので、何度選び直しても何も起きない。フォーカスを外して戻すまで直らない。
+    ///
+    /// キーは前面のアプリに届き、アプリの入力欄が自分で入力モードを替える。本物の JIS キーボードと
+    /// 同じ道なので取り残されない。どの入力ソースに行くかは macOS と日本語入力が決める。
+    /// イベントを送るにはアクセシビリティの許可が要るが、⌘ を見張るのに既に持っている。
+    static func pressJISKey(kana: Bool) -> Bool {
+        let code = CGKeyCode(kana ? kVK_JIS_Kana : kVK_JIS_Eisu)
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
+        else { return false }
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
     }
 
     // MARK: - 一覧と現在値
@@ -66,7 +81,10 @@ struct InputSource {
 
     // MARK: - 英数 / かな の解決
 
-    /// 英数側として使う入力ソースを決める。
+    /// 英数側として設定の窓に出す入力ソースを探す。
+    ///
+    /// 切り替えは英数キーで行い、行き先は macOS が決める（`pressJISKey`）。ここで探すのは、
+    /// 行くはずの先を見せるためだけ。ABC と ひらがな の環境で、実際の行き先と一致するのを確かめた。
     ///
     /// ID を決め打ちにしない。US 配列の人は `com.apple.keylayout.US` だし、
     /// ABC を無効にしている人もいる。「有効なキーボードレイアウトのうち、
@@ -86,7 +104,7 @@ struct InputSource {
         return layouts.first { !$0.languages.contains("ja") } ?? layouts.first
     }
 
-    /// かな側として使う入力ソースを決める。
+    /// かな側として設定の窓に出す入力ソースを探す。見つからなければ、かなキーを送っても行き先が無い。
     ///
     /// 「入力モードであって、日本語を扱うもの」という条件で探す。こうしておくと
     /// ことえりでも Google 日本語入力でも ATOK でも同じコードで引っかかる。

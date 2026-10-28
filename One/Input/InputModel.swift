@@ -11,7 +11,7 @@ final class InputModel {
     /// いまの入力モードが日本語（かな）かどうか。メニューバーの文字はこれで決まる。
     private(set) var isKana = false
 
-    /// 英数側・かな側として実際に使う入力ソースの表示名。設定の窓に出す。
+    /// 英数キー・かなキーで行くはずの入力ソースの表示名。設定の窓に出す。
     private(set) var asciiName = "—"
     private(set) var kanaName = "—"
 
@@ -43,8 +43,6 @@ final class InputModel {
     private static let showsModeKey = "showsModeInMenuBar"
 
     private let watcher = CommandKeyWatcher()
-    private var ascii: InputSource?
-    private var kana: InputSource?
 
     init() {
         isSwapped = UserDefaults.standard.bool(forKey: Self.swapKey)
@@ -99,32 +97,27 @@ final class InputModel {
         // 右がかな、左が英数。入れ替え設定が入っていれば逆。
         // `!=` を Bool 同士に使うと排他的論理和（XOR）になる。
         let wantKana = (side == .right) != isSwapped
-        let target = wantKana ? kana : ascii
-        let ok = target?.select() ?? false
+        let key = wantKana ? "かな" : "英数"
         // うまくいっているときは debug（残さない）、失敗したときだけ error（残す）。
         // 「たまに切り替わらない」を後から追えるようにしておきたいのは失敗の方だけ。
-        if ok {
-            log.debug("切り替え \(wantKana ? "かな" : "英数", privacy: .public) 対象=\(target?.id ?? "なし", privacy: .public)")
+        if InputSource.pressJISKey(kana: wantKana) {
+            log.debug("切り替え \(key, privacy: .public)キーを送った")
         } else {
-            log.error("切り替えに失敗 \(wantKana ? "かな" : "英数", privacy: .public) 対象=\(target?.id ?? "見つからない", privacy: .public)")
+            log.error("切り替えに失敗 \(key, privacy: .public)キーを作れなかった")
         }
     }
 
-    /// 英数側・かな側に使う入力ソースを拾い直す。
+    /// 英数側・かな側として設定の窓に出す入力ソースを拾い直す。
     private func reloadInputSources() {
-        ascii = InputSource.resolveASCII()
-        kana = InputSource.resolveKana()
-        asciiName = ascii?.localizedName ?? "見つかりません"
-        kanaName = kana?.localizedName ?? "見つかりません"
+        asciiName = InputSource.resolveASCII()?.localizedName ?? "見つかりません"
+        kanaName = InputSource.resolveKana()?.localizedName ?? "見つかりません"
     }
 
     /// いまの入力ソースを見て `isKana` を合わせる。
     private func refreshCurrentMode() {
         guard let current = InputSource.current else { return }
         // ID の一致ではなく「日本語を扱う入力モードか」で見る。ことえりでも
-        // 他の IME でも同じ判定で通る。
-        // 変数名を kana にしないこと。プロパティの `kana`（InputSource?）を
-        // この関数の中だけ Bool で隠してしまう。Swift は警告を出さない。
+        // 他の IME でも同じ判定で通る。ことえりの英字モードは言語が en なので、かなとは見ない。
         let nowKana = current.type == (kTISTypeKeyboardInputMode as String)
             && current.languages.contains("ja")
         // 同じ値でも代入すると @Observable は変化として扱い、画面を描き直させる。
