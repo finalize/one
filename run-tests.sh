@@ -15,6 +15,8 @@
 #    暦と日付だけを受け取るので、カレンダー.app の予定も、この Mac の週の始まりや地域も要らない。
 # 6. メニューバーに出す数字の計算と書き方（Monitor）。
 #    OS から読んだ数を引数で受け取るので、実際の CPU やネットワークは要らない。
+# 7. Claude Code と Codex の使用量の読み方と書き方（UsageLimits）。
+#    CLI が出す1行を文字列で渡すので、claude も codex も、ネットも要らない。
 #
 # それぞれ @main を持つ別の実行ファイルにする。1つにまとめると入口がいくつもできてしまう。
 set -e
@@ -28,6 +30,7 @@ swiftc -o "$out/snap" One/Windows/WindowLayout.swift One/Windows/WindowHistory.s
 swiftc -o "$out/mirror" One/Mirror/NotchGeometry.swift One/Shared/PanelPlacement.swift One/Mirror/Quality.swift Tests/MirrorTests.swift
 swiftc -o "$out/calendar" One/Calendar/CalendarGrid.swift Tests/CalendarGridTests.swift
 swiftc -o "$out/monitor" One/Monitor/Monitor.swift Tests/MonitorTests.swift
+swiftc -o "$out/usage" One/Monitor/Monitor.swift One/Monitor/UsageLimits.swift Tests/UsageLimitsTests.swift
 
 # どれかが落ちても、ほかの結果も見えるように全部走らせてから終える。
 status=0
@@ -42,4 +45,6 @@ echo
 "$out/calendar" || status=1
 echo
 "$out/monitor" || status=1
+echo
+"$out/usage" || status=1
 exit $status

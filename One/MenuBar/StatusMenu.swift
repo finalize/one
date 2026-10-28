@@ -42,6 +42,8 @@ final class StatusMenu {
         }
 
         // モニタの数字。「モニタ」タブで選んでいるものだけ。押しても何もしない項目なので灰色にする。
+        // 使用量は数分おきにしか聞かないので、開いたときに聞き直す（届いたら行が書き換わる）。
+        monitor.menuWillOpen()
         monitorItems = monitor.detailLines(for: .menu).map { text in
             let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
             item.attributedTitle = Self.monitorTitle(text)

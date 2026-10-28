@@ -11,6 +11,15 @@ enum Monitor {
         case cpu
         case memory
         case disk
+        /// Claude Code と Codex の使用量の枠。OS から読むのではなく、それぞれの CLI に聞く（`UsageReader`）。
+        case claude
+        case codex
+
+        /// 選んだことが無い人に出すもの。使用量は CLI を走らせるので、選んだ人にだけ出す。
+        static let defaults: [Item] = [.network, .cpu, .memory, .disk]
+
+        /// CLI に聞くもの。1秒ごとには測らず、数分おきに聞く。
+        var asksCommand: Bool { self == .claude || self == .codex }
     }
 
     /// CPU が働いた時間の累計（`host_cpu_load_info` の `cpu_ticks`）。全部のコアを合わせた数。
@@ -126,7 +135,7 @@ enum Monitor {
     /// メニューバーの1行。`kind` は幅をそろえるための種類（`StatusImage` が使う）。
     struct Line: Equatable {
         enum Kind: Equatable {
-            case down, up, cpu, memory, disk
+            case down, up, cpu, memory, disk, claude, codex
         }
         var kind: Kind
         var text: String
@@ -135,6 +144,8 @@ enum Monitor {
     /// 行を、上下2段の列に詰める。メニューバーの高さに入るのは2段まで。
     ///
     /// ネットワークの下り・上りはいつも同じ列の上と下に置く（2つで1つの項目なので）。
+    /// Claude と Codex も、続いて並んでいれば同じ列の上と下に置く。別の項目だが同じ形の行なので、
+    /// 上下に並べると見比べやすい。ほかの行と組ませると、Claude と Codex が別の列に分かれてしまう。
     /// ほかの行は、並んだ順に2つずつ詰める。1つ余ったら、その列は上の段だけ。
     static func columns(_ lines: [Line]) -> [[Line]] {
         var columns: [[Line]] = []
@@ -142,7 +153,7 @@ enum Monitor {
         var index = 0
         while index < lines.count {
             let line = lines[index]
-            if line.kind == .down, index + 1 < lines.count, lines[index + 1].kind == .up {
+            if index + 1 < lines.count, isPair(line.kind, lines[index + 1].kind) {
                 if !pending.isEmpty { columns.append(pending); pending = [] }
                 columns.append([line, lines[index + 1]])
                 index += 2
@@ -154,5 +165,10 @@ enum Monitor {
         }
         if !pending.isEmpty { columns.append(pending) }
         return columns
+    }
+
+    /// 同じ列の上と下に置く2つの行か。
+    private static func isPair(_ top: Line.Kind, _ bottom: Line.Kind) -> Bool {
+        (top == .down && bottom == .up) || (top == .claude && bottom == .codex)
     }
 }

@@ -68,6 +68,8 @@ enum StatusImage {
         case .cpu: ["CPU 100%"]
         case .memory: ["メモリ 100%"]
         case .disk: ["空き 999 GB", "空き 999 TB", "空き 999 MB"]
+        case .claude: ["Claude 100% 週 100%"]
+        case .codex: ["Codex 100% 週 100%"]
         }
         return ceil(samples.map { NSAttributedString(string: $0, attributes: [.font: valueFont]).size().width }.max() ?? 0)
     }

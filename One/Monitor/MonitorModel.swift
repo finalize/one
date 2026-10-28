@@ -1,7 +1,7 @@
 import AppKit
 
 /// メニューバーと右クリックのメニューに出す数字（ネットワーク・CPU・メモリ・ディスク）を
-/// 1秒ごとに測って持つ。
+/// 1秒ごとに測って持つ。Claude Code と Codex の使用量は、数分おきにそれぞれの CLI に聞いて持つ。
 ///
 /// どこにも出さない項目は測らない。ディスプレイが眠っている間も測らない（見る人がいない）。
 @MainActor
@@ -28,6 +28,8 @@ final class MonitorModel {
     private(set) var memory: (used: UInt64, total: UInt64)?
     /// 起動ディスクの空き（バイト）。
     private(set) var diskFree: Int64?
+    /// Claude Code と Codex の使用量。まだ聞けていないものは入っていない。
+    private(set) var usage: [Monitor.Item: UsageLimits.State] = [:]
 
     private var timer: Timer?
     private var screensAsleep = false
@@ -35,6 +37,12 @@ final class MonitorModel {
     private var lastNetwork: (received: UInt64, sent: UInt64, at: Date)?
     /// ディスクの空きは速くは変わらないので、10回に1回だけ読む。
     private var ticksUntilDisk = 0
+    /// 使用量を聞く頃合いか、1分ごとに見る。
+    private var usageTimer: Timer?
+    /// 使用量を最後に聞きに行った時刻。
+    private var lastAsked: [Monitor.Item: Date] = [:]
+    /// 使用量を聞いている最中のもの。重ねては聞かない。
+    private var asking: Set<Monitor.Item> = []
 
     /// メニューバーのほうは、場所を分ける前からの名前のまま（選んであったものを引き継ぐ）。
     private static func key(for place: Place) -> String {
@@ -52,22 +60,23 @@ final class MonitorModel {
         center.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.screensAsleep = true
-                self?.updateTimer()
+                self?.updateTimers()
             }
         }
         center.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.screensAsleep = false
-                self?.updateTimer()
+                self?.updateTimers()
             }
         }
-        updateTimer()
+        updateTimers()
     }
 
-    /// 保存が無ければ全部出す。空の並びは「何も出さない」を選んだ印なので、そのまま使う。
+    /// 保存が無ければ、決めておいたもの（使用量のほかの全部）を出す。空の並びは「何も出さない」を選んだ印なので、
+    /// そのまま使う。
     private static func saved(for place: Place) -> [Monitor.Item] {
         let saved = UserDefaults.standard.stringArray(forKey: key(for: place))
-        return saved.map { $0.compactMap(Monitor.Item.init(rawValue:)) } ?? Monitor.Item.allCases
+        return saved.map { $0.compactMap(Monitor.Item.init(rawValue:)) } ?? Monitor.Item.defaults
     }
 
     // MARK: - 設定の窓から
@@ -92,11 +101,15 @@ final class MonitorModel {
         }
         UserDefaults.standard.set(items.map(\.rawValue), forKey: Self.key(for: place))
         if !measured.contains(item) { forget(item) }
-        updateTimer()
+        updateTimers()
     }
 
     /// 測るもの。どちらかの場所に出しているもの。
     private var measured: Set<Monitor.Item> { Set(barItems + menuItems) }
+    /// 1秒ごとに OS から読むもの。
+    private var sampled: Set<Monitor.Item> { measured.filter { !$0.asksCommand } }
+    /// 数分おきに CLI に聞くもの。
+    private var queried: Set<Monitor.Item> { measured.filter(\.asksCommand) }
 
     /// どこにも出さなくなったものの値を捨てる。残すと、説明に古い数が出続ける。
     /// また出したときは、2回測るまで「–」から始まる。
@@ -114,6 +127,9 @@ final class MonitorModel {
         case .disk:
             diskFree = nil
             ticksUntilDisk = 0
+        case .claude, .codex:
+            usage[item] = nil
+            lastAsked[item] = nil
         }
     }
 
@@ -135,6 +151,10 @@ final class MonitorModel {
                 return [.init(kind: .memory, text: "メモリ " + text)]
             case .disk:
                 return [.init(kind: .disk, text: "空き " + (diskFree.map { Monitor.sizeText(Double($0)) } ?? "–"))]
+            case .claude:
+                return [.init(kind: .claude, text: UsageLimits.barText("Claude", usage[.claude]))]
+            case .codex:
+                return [.init(kind: .codex, text: UsageLimits.barText("Codex", usage[.codex]))]
             }
         }
     }
@@ -162,14 +182,23 @@ final class MonitorModel {
                 return "メモリ \(used) / \(total)（\(Monitor.percentText(Double(memory.used) / Double(memory.total)))）"
             case .disk:
                 return "起動ディスクの空き \(diskFree.map { Monitor.sizeText(Double($0)) } ?? "–")"
+            case .claude:
+                return UsageLimits.detailText("Claude Code", command: "claude", usage[.claude], now: Date(), calendar: .current)
+            case .codex:
+                return UsageLimits.detailText("Codex", command: "codex", usage[.codex], now: Date(), calendar: .current)
             }
         }
     }
 
     // MARK: - 測る
 
-    private func updateTimer() {
-        let wants = !measured.isEmpty && !screensAsleep
+    private func updateTimers() {
+        updateSampleTimer()
+        updateUsageTimer()
+    }
+
+    private func updateSampleTimer() {
+        let wants = !sampled.isEmpty && !screensAsleep
         if wants, timer == nil {
             ticksUntilDisk = 0
             sample()
@@ -192,7 +221,7 @@ final class MonitorModel {
 
     /// 1回測る。どこにも出していないものは読まない。
     private func sample() {
-        let measured = measured
+        let measured = sampled
         if measured.contains(.network), let now = SystemSampler.networkBytes() {
             let at = Date()
             if let last = lastNetwork {
@@ -215,6 +244,76 @@ final class MonitorModel {
                 ticksUntilDisk = 10
             }
             ticksUntilDisk -= 1
+        }
+    }
+
+    // MARK: - 使用量を聞く
+
+    /// 使用量を聞く見張りを、出しているものに合わせて動かす・止める。
+    ///
+    /// 1分ごとに、聞く頃合いのものだけを聞く（`askIfDue`）。CLI を走らせるのは1回に数秒かかり、
+    /// 枠の割合も1秒では変わらないので、1秒ごとの見張りには入れない。
+    private func updateUsageTimer() {
+        guard !queried.isEmpty, !screensAsleep else {
+            usageTimer?.invalidate()
+            usageTimer = nil
+            return
+        }
+        if usageTimer == nil {
+            let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.askIfDue() }
+            }
+            timer.tolerance = 10
+            RunLoop.main.add(timer, forMode: .common)
+            usageTimer = timer
+        }
+        // 出したばかりのものと、眠りから覚めたときは、次の1分を待たずに聞く。
+        askIfDue()
+    }
+
+    /// 右クリックのメニューを開いた。30秒より前に聞いた使用量は聞き直す。届いたら、開いているメニューの行も
+    /// 書き換わる。
+    func menuWillOpen() {
+        guard !screensAsleep else { return }
+        askIfDue(maxAge: 30)
+    }
+
+    /// 聞く頃合いのものを聞く。読めていれば5分、読めなかったら1分あけて聞き直す。
+    ///
+    /// - maxAge: これより前に聞いたものは、読めていても聞き直す
+    private func askIfDue(maxAge: TimeInterval? = nil) {
+        let now = Date()
+        for item in queried where !asking.contains(item) {
+            var interval: TimeInterval = 60
+            if case .read? = usage[item] { interval = 5 * 60 }
+            if let maxAge { interval = maxAge }
+            if let last = lastAsked[item], now.timeIntervalSince(last) < interval { continue }
+            ask(item)
+        }
+    }
+
+    private func ask(_ item: Monitor.Item) {
+        asking.insert(item)
+        lastAsked[item] = Date()
+        Task {
+            let state = await UsageReader.read(item)
+            asking.remove(item)
+            // 聞いている間に、どこにも出さなくなった。
+            guard queried.contains(item) else { return }
+            logChange(item, from: usage[item], to: state)
+            usage[item] = state
+        }
+    }
+
+    /// 読めた・読めなかったが変わったときだけ残す。読めない間は1分ごとに聞き直すので、毎回残すとログが溜まる。
+    private func logChange(_ item: Monitor.Item, from old: UsageLimits.State?, to new: UsageLimits.State) {
+        switch new {
+        case .read:
+            if case .read? = old { return }
+            log.notice("\(item.rawValue, privacy: .public) の使用量を読めた")
+        case .failed(let failure):
+            if old == new { return }
+            log.error("\(item.rawValue, privacy: .public) の使用量を読めなかった: \(String(describing: failure), privacy: .public)")
         }
     }
 }

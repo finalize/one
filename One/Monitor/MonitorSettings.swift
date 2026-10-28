@@ -12,6 +12,8 @@ struct MonitorSettings: View {
                 item(.cpu, in: .menuBar, "CPU 使用率", "全部のコアを合わせた忙しさ。")
                 item(.memory, in: .menuBar, "メモリ", "アクティビティモニタの「使用済みメモリ」に合わせた数え方の割合。")
                 item(.disk, in: .menuBar, "ディスクの空き", "起動ディスクの空き。macOS が空けられる分（一時ファイルなど）も含める。")
+                item(.claude, in: .menuBar, "Claude Code の使用量", "5時間の枠と週の枠を使った割合（「Claude 3% 週 14%」）。claude コマンドに聞く。")
+                item(.codex, in: .menuBar, "Codex の使用量", "5時間の枠と週の枠を使った割合（「Codex 0% 週 46%」）。codex コマンドに聞く。")
             } header: {
                 Text("メニューバーに出すもの（1つでも出すと、⌘ の代わりに数字が出る）")
             } footer: {
@@ -25,10 +27,12 @@ struct MonitorSettings: View {
                 item(.cpu, in: .menu, "CPU 使用率")
                 item(.memory, in: .menu, "メモリ（使っている量 / 積んでいる量）")
                 item(.disk, in: .menu, "ディスクの空き")
+                item(.claude, in: .menu, "Claude Code の使用量（枠が戻る時刻も）")
+                item(.codex, in: .menu, "Codex の使用量（枠が戻る時刻も）")
             } header: {
                 Text("⌘ の右クリックのメニューに出すもの")
             } footer: {
-                Text("1秒ごとに測る。どこにも出さないものは測らず、ディスプレイが眠っている間も測らない。温度や GPU は、Apple が公開していない仕組みが要るので出さない。")
+                Text("1秒ごとに測る。Claude Code と Codex の使用量は5分ごとと、メニューを開いたときに聞く。どこにも出さないものは測らず、ディスプレイが眠っている間も測らない。温度や GPU は、Apple が公開していない仕組みが要るので出さない。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
