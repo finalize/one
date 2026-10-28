@@ -24,11 +24,13 @@ struct Snap: Equatable {
 
 /// ドラッグで端へ寄せたときに、どこへ並べるかの決まり。
 ///
-/// 配置は、それまで使っていた Rectangle の設定（`landscapeSnapAreas`）をそのまま移した。
-/// 1/3 を中心にした配置で、Rectangle の既定とは違う。
+/// 配置は、それまで使っていた Rectangle の設定（`landscapeSnapAreas`）を移した。
+/// 1/3 を中心にした配置で、Rectangle の既定とは違う。上の辺だけは中央 1/3 から最大化に変えた。
+/// 中央 1/3 は下の辺の中央でも出せるので、最大化をドラッグで出す場所に回した（macOS と
+/// Rectangle の既定でも、上の辺は最大化）。
 ///
 /// ```
-///  左上の角: 左半分    上の辺: 中央 1/3    右上の角: 右半分
+///  左上の角: 左半分    上の辺: 最大化      右上の角: 右半分
 ///  左の辺:   左 1/3                        右の辺:   右 1/3
 ///  左下の角: 左下      下の辺: 3分割       右下の角: 右下
 /// ```
@@ -96,7 +98,7 @@ enum SnapLayout {
     static func action(for edge: SnapEdge, at point: CGPoint, in area: CGRect, prior: WindowAction?) -> WindowAction {
         switch edge {
         case .topLeft: .leftHalf
-        case .top: .centerThird
+        case .top: .maximize
         case .topRight: .rightHalf
         case .left: .firstThird
         case .right: .lastThird

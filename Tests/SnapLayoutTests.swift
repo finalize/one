@@ -65,7 +65,7 @@ private func specBorder(_ s: CGFloat, _ length: CGFloat, _ k: Int, _ n: Int) -> 
 /// 点はその端に当たる主画面の点。
 private let edgeActionTable: [(SnapEdge, CGPoint, WindowAction)] = [
     (.topLeft, pt(10, 10), .leftHalf),
-    (.top, pt(1280, 2), .centerThird),
+    (.top, pt(1280, 2), .maximize),
     (.topRight, pt(2550, 10), .rightHalf),
     (.left, pt(2, 700), .firstThird),
     (.right, pt(2558, 700), .lastThird),
@@ -163,7 +163,7 @@ private let bottomLeftPoint = pt(10, 1430) // 左下の角
 
 private let leftSnap = snapOn(mainScreen, .left, .firstThird)
 private let topLeftSnap = snapOn(mainScreen, .topLeft, .leftHalf)
-private let topSnap = snapOn(mainScreen, .top, .centerThird)
+private let topSnap = snapOn(mainScreen, .top, .maximize)
 private func bottomSnap(_ action: WindowAction) -> Snap { snapOn(mainScreen, .bottom, action) }
 
 /// ウィンドウの枠を返す関数の偽物。呼ばれた回数（相手のアプリへの問い合わせの回数）を数える。
@@ -344,10 +344,10 @@ struct SnapLayoutTests {
             ("境目の 1 手前 x = 2559 は主画面の右の辺", pt(2559, 500), snapOn(mainScreen, .right, .lastThird)),
             ("左の画面との境目 x = 0 は主画面の左の辺", pt(0, 700), snapOn(mainScreen, .left, .firstThird)),
             ("x が負: 境目の 1 手前 x = -1 は左の画面の右の辺", pt(-1, 700), snapOn(leftScreen, .right, .lastThird)),
-            ("上の画面との境目 y = 0 は主画面の上の辺", pt(2000, 0), snapOn(mainScreen, .top, .centerThird)),
+            ("上の画面との境目 y = 0 は主画面の上の辺", pt(2000, 0), snapOn(mainScreen, .top, .maximize)),
             // 上の画面の e1 = 1500 + 640 = 2140 なので、x = 2000 は左の 1/3。
             ("y が負: 境目の 1 手前 y = -1 は上の画面の下の辺", pt(2000, -1), snapOn(upperScreen, .bottom, .firstThird)),
-            ("y が負: 上の画面の上の辺", pt(3000, -1080), snapOn(upperScreen, .top, .centerThird)),
+            ("y が負: 上の画面の上の辺", pt(3000, -1080), snapOn(upperScreen, .top, .maximize)),
         ]
         for (name, p, expected) in borders { check("画面: \(name)", snap(p, allScreens), expected) }
 
@@ -495,8 +495,8 @@ struct SnapLayoutTests {
             let got = SnapLayout.action(for: edge, at: p, in: mainScreen.frame, prior: prior)
             return got == action ? nil : "\(edge) で prior \(show(prior)) のとき \(got)"
         }
-        check("上の辺は左の 1/3 の上でも centerThird（位置で分けない）", snap(pt(100, 2)), topSnap)
-        check("上の辺は右の 1/3 の上でも centerThird（位置で分けない）", snap(pt(2400, 2)), topSnap)
+        check("上の辺は左の 1/3 の上でも maximize（位置で分けない）", snap(pt(100, 2)), topSnap)
+        check("上の辺は右の 1/3 の上でも maximize（位置で分けない）", snap(pt(2400, 2)), topSnap)
     }
 
     // MARK: 下の辺の3分割
@@ -604,7 +604,7 @@ struct SnapLayoutTests {
         // 以下は前の仕様の境目の式で手で計算した値。
         let frames: [(String, CGPoint, CGRect)] = [
             ("主画面の右上の角は右半分", pt(2550, 10), box(1280, 30, 1280, 1346)),
-            ("主画面の上の辺は中央の 1/3", pt(1280, 2), box(853, 30, 854, 1346)),
+            ("主画面の上の辺は最大化（visible いっぱい）", pt(1280, 2), box(0, 30, 2560, 1346)),
             ("主画面の右の辺は右の 1/3", pt(2558, 700), box(1707, 30, 853, 1346)),
             ("主画面の左下の角は左下の 1/4（高さ 1346 の半分 673）", pt(10, 1430), box(0, 703, 1280, 673)),
             ("主画面の右下の角は右下の 1/4", pt(2550, 1430), box(1280, 703, 1280, 673)),
@@ -612,7 +612,7 @@ struct SnapLayoutTests {
             ("右の画面の左の辺は右の画面の左の 1/3", pt(2562, 500), box(2560, 25, 640, 1055)),
             ("左の画面（x が負）の左下の角（高さ 1055 の半分は上が 528）", pt(-1918, 1435), box(-1920, 913, 960, 527)),
             ("左の画面の右の辺", pt(-2, 900), box(-640, 385, 640, 1055)),
-            ("上の画面（y が負）の上の辺", pt(3000, -1079), box(2140, -1055, 640, 1055)),
+            ("上の画面（y が負）の上の辺は、その画面の visible いっぱい", pt(3000, -1079), box(1500, -1055, 1920, 1055)),
         ]
         for (name, p, frame) in frames { check("置く枠: \(name)", snap(p, allScreens)?.frame, frame) }
         check("置く枠: Snap を直に作っても、その画面の visible の格子",
