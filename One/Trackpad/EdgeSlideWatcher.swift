@@ -1,8 +1,6 @@
 import AppKit
 
-/// トラックパッドに触れている指を見張り、端をなぞったら音量・明るさのキーを送る。
-///
-/// どの端を相手にするか（`edges`）は、設定に合わせて `TrackpadModel` が決める。
+/// トラックパッドに触れている指を見張り、端をなぞったら音量・キーボードの明るさのキーを送る。
 ///
 /// 指の位置は、ジェスチャーのイベント（`NSEvent.EventType.gesture`）に載っている。トラックパッドに
 /// 指が触れている間、macOS はこれを細かく（1秒に何十回も）流していて、指1本でポインタを動かして
@@ -15,12 +13,6 @@ import AppKit
 final class EdgeSlideWatcher {
     private var tracker = EdgeSlideTracker()
     private var tap: CFMachPort?
-
-    /// 相手にする端。見張っている途中で変えてもよい。
-    var edges: Set<TrackpadEdge> {
-        get { tracker.edges }
-        set { tracker.edges = newValue }
-    }
     private var source: CFRunLoopSource?
 
     deinit {
@@ -72,7 +64,7 @@ final class EdgeSlideWatcher {
         CFMachPortInvalidate(tap)
         self.tap = nil
         source = nil
-        tracker = EdgeSlideTracker(edges: tracker.edges)
+        tracker = EdgeSlideTracker()
         log.notice("トラックパッドの端の見張りをやめた")
     }
 
@@ -80,9 +72,11 @@ final class EdgeSlideWatcher {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             // 応答が遅い・ユーザーの操作で、macOS がタップを止めることがある。止まったら掛け直す。
-            // 止まっている間に何があったか（2本目の指、クリック）は分からないので、なぞっている回はやめる。
+            // 止まっている間に何があったか（2本目の指、クリック、指が触れ始めたこと）は分からないので、
+            // 見張りを始め直したのと同じにする。なぞっている回はやめ、そのとき触れている指は、触れ始めたと
+            // macOS が教える指でなければ相手にしない。
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
-            tracker.interrupt()
+            tracker = EdgeSlideTracker()
             log.notice("トラックパッドの見張りが止められたので掛け直した")
             return
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
@@ -108,8 +102,7 @@ final class EdgeSlideWatcher {
         let up = change.steps > 0
         let (key, name): (MediaKey, String) = switch change.edge {
         case .right: (up ? .volumeUp : .volumeDown, "音量")
-        case .left: (up ? .brightnessUp : .brightnessDown, "明るさ")
-        case .top: (up ? .keyboardBrightnessUp : .keyboardBrightnessDown, "キーボードの明るさ")
+        case .left: (up ? .keyboardBrightnessUp : .keyboardBrightnessDown, "キーボードの明るさ")
         }
         for _ in 0 ..< abs(change.steps) {
             key.press()

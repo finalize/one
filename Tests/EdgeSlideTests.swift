@@ -5,9 +5,9 @@ import Foundation
 // トラックパッドも音量も使わない。判定は「いま触れている指の位置」を1回ずつ受け取って段数を返すだけなので、
 // 指の位置を自分で並べて流し込めば、指で触らずに全部試せる。
 //
-// 期待値は決めごと（端に触れ始めた指だけ・指1本だけ・なぞる向きに動き出したときだけ・押し込んでいないときだけ、
-// 1段はなぞる向きの長さの 0.05、左右の端は幅の 0.10、上の端は高さの 0.06、どちらの向きかは 0.03 動いてから
-// 決める、角では動き出した向きで決める）から手で数えた段数。
+// 期待値は決めごと（端に触れ始めた指だけ・指1本だけ・縦に動き出したときだけ・押し込んでいないときだけ、
+// 1段は高さの 0.05、端は幅の 0.10、縦か横かは 0.03 動いてから決める）から手で数えた段数。
+// 右の端は音量、左の端はキーボードの明るさ。
 // 指の動きは 1回に 0.01 ずつ（実機でもおおむねこの細かさで届く）。境目ちょうどで終わると
 // 小数の誤差で1段ずれうるので、なぞる距離は境目から外してある（0.27 なら 5 段）。
 
@@ -21,8 +21,6 @@ private struct Frame {
     var isPressing = false
     /// この回の前に、クリックなどでやめさせる（`interrupt()`）か。
     var interruptsFirst = false
-    /// この回の前に、相手にする端を変える（設定を変えた）か。
-    var setsEdges: Set<TrackpadEdge>?
 }
 
 /// フレームの列の `index` 番目に手を加える。
@@ -64,40 +62,34 @@ struct EdgeSlideTests {
     static var failures = 0
 
     /// 流したときに返った変化を、端ごとに足し合わせる。
-    fileprivate static func run(
-        _ frames: [Frame], edges: Set<TrackpadEdge> = [.left, .right, .top]
-    ) -> (changes: [Change], volume: Int, brightness: Int, keyboard: Int) {
-        var tracker = EdgeSlideTracker(edges: edges)
+    fileprivate static func run(_ frames: [Frame]) -> (changes: [Change], volume: Int, keyboard: Int) {
+        var tracker = EdgeSlideTracker()
         var changes: [Change] = []
         for frame in frames {
-            if let edges = frame.setsEdges { tracker.edges = edges }
             if frame.interruptsFirst { tracker.interrupt() }
             if let change = tracker.update(frame.touches, isPressing: frame.isPressing) {
                 changes.append(change)
             }
         }
         let volume = changes.filter { $0.edge == .right }.reduce(0) { $0 + $1.steps }
-        let brightness = changes.filter { $0.edge == .left }.reduce(0) { $0 + $1.steps }
-        let keyboard = changes.filter { $0.edge == .top }.reduce(0) { $0 + $1.steps }
-        return (changes, volume, brightness, keyboard)
+        let keyboard = changes.filter { $0.edge == .left }.reduce(0) { $0 + $1.steps }
+        return (changes, volume, keyboard)
     }
 
-    /// 音量・画面の明るさ・キーボードの明るさが、それぞれ何段動いたかを見る。
+    /// 音量とキーボードの明るさが、それぞれ何段動いたかを見る。
     ///
     /// 合計だけでなく、動かないはずの端には変化が1つも出ていないことも見る（+1 と -1 で 0 になっても落とす）。
     fileprivate static func check(
-        _ name: String, _ frames: [Frame], edges: Set<TrackpadEdge> = [.left, .right, .top],
-        volume: Int = 0, brightness: Int = 0, keyboard: Int = 0
+        _ name: String, _ frames: [Frame], volume: Int = 0, keyboard: Int = 0
     ) {
-        let result = run(frames, edges: edges)
-        let expected: [TrackpadEdge: Int] = [.right: volume, .left: brightness, .top: keyboard]
+        let result = run(frames)
+        let expected: [TrackpadEdge: Int] = [.right: volume, .left: keyboard]
         let untouchedOK = expected.allSatisfy { edge, steps in
             steps != 0 || !result.changes.contains { $0.edge == edge }
         }
-        let ok = result.volume == volume && result.brightness == brightness && result.keyboard == keyboard
-            && untouchedOK
+        let ok = result.volume == volume && result.keyboard == keyboard && untouchedOK
         if !ok { failures += 1 }
-        print("\(ok ? "PASS" : "FAIL")  \(name)  期待=音量\(volume) 明るさ\(brightness) キーボード\(keyboard)  実際=音量\(result.volume) 明るさ\(result.brightness) キーボード\(result.keyboard)")
+        print("\(ok ? "PASS" : "FAIL")  \(name)  期待=音量\(volume) キーボード\(keyboard)  実際=音量\(result.volume) キーボード\(result.keyboard)")
     }
 
     static func main() {
@@ -105,11 +97,11 @@ struct EdgeSlideTests {
 
         check("右の端を上へ 0.27 → 音量 +5", slide(1, from: (0.97, 0.30), to: (0.97, 0.57)), volume: 5)
         check("右の端を下へ 0.27 → 音量 -5", slide(1, from: (0.97, 0.70), to: (0.97, 0.43)), volume: -5)
-        check("左の端を上へ 0.27 → 明るさ +5", slide(1, from: (0.03, 0.30), to: (0.03, 0.57)), brightness: 5)
-        check("左の端を下へ 0.12 → 明るさ -2", slide(1, from: (0.03, 0.50), to: (0.03, 0.38)), brightness: -2)
+        check("左の端を上へ 0.27 → キーボード +5", slide(1, from: (0.03, 0.30), to: (0.03, 0.57)), keyboard: 5)
+        check("左の端を下へ 0.12 → キーボード -2", slide(1, from: (0.03, 0.50), to: (0.03, 0.38)), keyboard: -2)
         check("下から上まで 0.97 → 音量 +19", slide(1, from: (0.97, 0.01), to: (0.97, 0.98)), volume: 19)
         check("端の幅いっぱい（x = 0.905）で触れても右の端", slide(1, from: (0.905, 0.30), to: (0.905, 0.57)), volume: 5)
-        check("端の幅いっぱい（x = 0.095）で触れても左の端", slide(1, from: (0.095, 0.30), to: (0.095, 0.57)), brightness: 5)
+        check("端の幅いっぱい（x = 0.095）で触れても左の端", slide(1, from: (0.095, 0.30), to: (0.095, 0.57)), keyboard: 5)
         check("斜め（縦 0.27 に横 0.12）でも、横が縦の半分より小さければ縦とみなす",
               slide(1, from: (0.97, 0.30), to: (0.85, 0.57)), volume: 5)
         check("なぞり始めたあとは、内側へずれても続く",
@@ -198,56 +190,13 @@ struct EdgeSlideTests {
                   + slide(2, from: (0.97, 0.47), to: (0.97, 0.77)),
               volume: 3)
 
-        // MARK: 上の端と角
+        // MARK: 上の端と角（上の端は 0.9.0 にあり、やめた）
 
-        check("上の端を右へ 0.27 → キーボード +5", slide(1, from: (0.30, 0.97), to: (0.57, 0.97)), keyboard: 5)
-        check("上の端を左へ 0.12 → キーボード -2", slide(1, from: (0.60, 0.97), to: (0.48, 0.97)), keyboard: -2)
-        check("上の端の幅いっぱい（y = 0.945）で触れても上の端", slide(1, from: (0.30, 0.945), to: (0.57, 0.945)), keyboard: 5)
-        check("上の端のすぐ外（y = 0.93）で触れて横に動かす", slide(1, from: (0.30, 0.93), to: (0.57, 0.93)))
-        check("上の端で触れて下へ動かす", slide(1, from: (0.50, 0.97), to: (0.50, 0.70)))
-        check("上の端で触れて先に下へ動かし、そのあと横に動かす",
-              slide(1, from: (0.50, 0.97), to: (0.50, 0.92)) + slide(1, from: (0.50, 0.92), to: (0.77, 0.92)).dropFirst())
-        check("上の端で触れて斜め 45 度に動かす", slide(1, from: (0.30, 0.97), to: (0.57, 0.70)))
-        check("上の端を2本でなぞる", slide(1, from: (0.30, 0.97), to: (0.57, 0.97), others: [finger(2, 0.40, 0.90)]))
-        check("右上の角で触れて下へなぞる → 音量", slide(1, from: (0.97, 0.97), to: (0.97, 0.70)), volume: -5)
-        check("右上の角で触れて左へなぞる → キーボード", slide(1, from: (0.97, 0.97), to: (0.70, 0.97)), keyboard: -5)
-        check("左上の角で触れて右へなぞる → キーボード", slide(1, from: (0.03, 0.97), to: (0.30, 0.97)), keyboard: 5)
-        check("左上の角で触れて斜めに動かす → どちらでもない", slide(1, from: (0.03, 0.97), to: (0.30, 0.70)))
-        // 縦に 0.03 動いた時点で左右の端（音量）に決まる。そのあと横へ動かしても、キーボードは変わらない
-        // （音量も、それ以上縦に動かないので変わらない）。
-        check("右上の角で先に縦に 0.03 動いたら左右の端に決まり、そのあと横へ動かしてもキーボードは変わらない",
-              slide(1, from: (0.97, 0.97), to: (0.97, 0.94)) + slide(1, from: (0.97, 0.94), to: (0.70, 0.94)).dropFirst())
-        check("上の端を切ってあると、上の端をなぞっても変わらない",
-              slide(1, from: (0.30, 0.97), to: (0.57, 0.97)), edges: [.left, .right])
-        check("上の端を切ってあっても、角から下へなぞれば音量",
-              slide(1, from: (0.97, 0.97), to: (0.97, 0.70)), edges: [.left, .right], volume: -5)
-        check("上の端を切ってあると、角から横へなぞっても変わらない",
-              slide(1, from: (0.97, 0.97), to: (0.70, 0.97)), edges: [.left, .right])
-        check("左右の端を切ってあると、右の端をなぞっても変わらない",
-              slide(1, from: (0.97, 0.30), to: (0.97, 0.57)), edges: [.top])
-        check("左右の端を切ってあっても、角から横へなぞればキーボード",
-              slide(1, from: (0.97, 0.97), to: (0.70, 0.97)), edges: [.top], keyboard: -5)
-
-        // 横切る向き（縦）の揺れが 0.03 に届かないうちは、上の端の候補に残る。左右の端は横に 0.035 動いて外れる。
-        check("左上の角で少し斜め（縦 0.022・横 0.035）に動き出してから横へなぞる → キーボード",
-              [Frame(touches: [finger(1, 0.03, 0.97)]), Frame(touches: [finger(1, 0.065, 0.948)])]
-                  + slide(1, from: (0.065, 0.948), to: (0.32, 0.948)).dropFirst(),
-              keyboard: 5)
-
-        // MARK: 途中で設定を変える
-
-        check("角で決めかけている途中で上の端を切ったら、横へなぞってもキーボードは変わらない",
-              with(slide(1, from: (0.97, 0.97), to: (0.70, 0.97)), at: 1) { $0.setsEdges = [.left, .right] })
-        check("右の端をなぞっている途中で左右の端を切ったら、そこで止まる",
-              slide(1, from: (0.97, 0.30), to: (0.97, 0.47))
-                  + with(Array(slide(1, from: (0.97, 0.47), to: (0.97, 0.77)).dropFirst()), at: 0) { $0.setsEdges = [.top] },
-              volume: 3)
-        check("同じ設定を入れ直しただけなら止まらない",
-              slide(1, from: (0.97, 0.30), to: (0.97, 0.47))
-                  + with(Array(slide(1, from: (0.97, 0.47), to: (0.97, 0.57)).dropFirst()), at: 0) {
-                      $0.setsEdges = [.left, .right, .top]
-                  },
-              volume: 5)
+        check("上の端の真ん中を横になぞっても変わらない", slide(1, from: (0.30, 0.97), to: (0.57, 0.97)))
+        check("右上の角から下へなぞる → 音量", slide(1, from: (0.97, 0.97), to: (0.97, 0.70)), volume: -5)
+        check("左上の角から下へなぞる → キーボード", slide(1, from: (0.03, 0.97), to: (0.03, 0.70)), keyboard: -5)
+        check("右上の角で触れて先に横へ動き、そのあと下へなぞっても変わらない",
+              slide(1, from: (0.97, 0.97), to: (0.90, 0.97)) + slide(1, from: (0.90, 0.97), to: (0.90, 0.70)).dropFirst())
 
         // MARK: 見張りを始めたときに触れていた指
 
@@ -272,7 +221,7 @@ struct EdgeSlideTests {
         check("離してからもう一度なぞる",
               slide(1, from: (0.97, 0.30), to: (0.97, 0.47)) + [lift]
                   + slide(2, from: (0.03, 0.60), to: (0.03, 0.33)),
-              volume: 3, brightness: -5)
+              volume: 3, keyboard: -5)
         check("やめた回のあと、離してからなぞれば効く",
               slide(1, from: (0.50, 0.30), to: (0.50, 0.57)) + [lift]
                   + slide(2, from: (0.97, 0.30), to: (0.97, 0.57)),

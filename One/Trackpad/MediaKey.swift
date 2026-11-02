@@ -1,34 +1,27 @@
 import AppKit
 import IOKit.hidsystem
 
-/// 音量・画面の明るさ・キーボードの明るさのキー。押したことにして、macOS に変えさせる。
+/// 音量・キーボードの明るさのキー。押したことにして、macOS に変えさせる。
 ///
 /// 音量や明るさを自分で書き換えず、キーを送る。こうすると、キーで変えたときと同じ表示が出て、
-/// 1回で動く量（16 段）も、どの出力先・どの画面に効くかも macOS のままになる。英数 / かなを
+/// 1回で動く量（16 段）も、どの出力先に効くかも macOS のままになる。英数 / かなを
 /// キーで送っている（`InputSource.pressJISKey`）のと同じ考え。
 ///
-/// 明るさのキーが効くのは、macOS が明るさを変えられる画面（内蔵の画面と Apple のディスプレイ）だけ。
-/// ほかのメーカーのディスプレイは DDC という別の道でしか変えられず、それには Apple が公開していない
-/// 仕組みが要るので、やらない。
-///
 /// キーボードの明るさのキーが効くのは、バックライトのあるキーボード（MacBook の内蔵キーボード）だけ。
-/// Magic Keyboard にはバックライトが無い。
+/// Magic Keyboard にはバックライトが無い。Apple シリコンの MacBook にはキーボードの明るさのキーが無い
+/// （コントロールセンターで変える）が、キーのイベントを送れば macOS は明るさを変える（MacBook で確かめた）。
 enum MediaKey {
     case volumeUp
     case volumeDown
-    case brightnessUp
-    case brightnessDown
     case keyboardBrightnessUp
     case keyboardBrightnessDown
 
-    /// IOKit の `NX_KEYTYPE_…`。音量・明るさのキーは、文字のキーと違ってキーコードを持たず、
+    /// IOKit の `NX_KEYTYPE_…`。音量や明るさのキーは、文字のキーと違ってキーコードを持たず、
     /// この番号を載せた「システム定義」のイベントとして届く。
     private var keyType: Int32 {
         switch self {
         case .volumeUp: NX_KEYTYPE_SOUND_UP
         case .volumeDown: NX_KEYTYPE_SOUND_DOWN
-        case .brightnessUp: NX_KEYTYPE_BRIGHTNESS_UP
-        case .brightnessDown: NX_KEYTYPE_BRIGHTNESS_DOWN
         case .keyboardBrightnessUp: NX_KEYTYPE_ILLUMINATION_UP
         case .keyboardBrightnessDown: NX_KEYTYPE_ILLUMINATION_DOWN
         }
