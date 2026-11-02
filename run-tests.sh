@@ -17,6 +17,8 @@
 #    OS から読んだ数を引数で受け取るので、実際の CPU やネットワークは要らない。
 # 7. Claude Code と Codex の使用量の読み方と書き方（UsageLimits）。
 #    CLI が出す1行を文字列で渡すので、claude も codex も、ネットも要らない。
+# 8. トラックパッドの端をなぞる判定（EdgeSlideTracker）。
+#    指の位置を並べて渡すので、トラックパッドも音量も要らない。
 #
 # それぞれ @main を持つ別の実行ファイルにする。1つにまとめると入口がいくつもできてしまう。
 set -e
@@ -31,6 +33,7 @@ swiftc -o "$out/mirror" One/Mirror/NotchGeometry.swift One/Shared/PanelPlacement
 swiftc -o "$out/calendar" One/Calendar/CalendarGrid.swift Tests/CalendarGridTests.swift
 swiftc -o "$out/monitor" One/Monitor/Monitor.swift Tests/MonitorTests.swift
 swiftc -o "$out/usage" One/Monitor/Monitor.swift One/Monitor/UsageLimits.swift Tests/UsageLimitsTests.swift
+swiftc -o "$out/edge" One/Trackpad/EdgeSlide.swift Tests/EdgeSlideTests.swift
 
 # どれかが落ちても、ほかの結果も見えるように全部走らせてから終える。
 status=0
@@ -47,4 +50,6 @@ echo
 "$out/monitor" || status=1
 echo
 "$out/usage" || status=1
+echo
+"$out/edge" || status=1
 exit $status

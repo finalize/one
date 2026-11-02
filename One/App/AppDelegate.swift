@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel!
     private var input: InputModel!
     private var windows: WindowModel!
+    private var trackpad: TrackpadModel!
     private var mirror: MirrorModel!
     private var calendarModel: CalendarModel!
     private var monitor: MonitorModel!
@@ -20,13 +21,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         windows = WindowModel()
+        trackpad = TrackpadModel()
         input = InputModel()
         model = AppModel()
-        // ⌘ の見張りもドラッグの見張りも、アクセシビリティの許可が下りてから始める。
-        // 許可を見ているのは AppModel なので、下りたらここから2つに伝える。
+        // ⌘ の見張りも、ドラッグとトラックパッドの見張りも、アクセシビリティの許可が下りてから始める。
+        // 許可を見ているのは AppModel なので、下りたらここから3つに伝える。
         model.onTrusted = { [unowned self] in
             input.startWatching()
             windows.trustGranted()
+            trackpad.trustGranted()
         }
         model.startCheckingTrust()
 
@@ -35,7 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor = MonitorModel()
         calendar = CalendarController(model: calendarModel)
         settings = SettingsWindow(
-            model: model, input: input, windows: windows, mirror: mirror, calendar: calendarModel, monitor: monitor
+            model: model, input: input, windows: windows, trackpad: trackpad, mirror: mirror, calendar: calendarModel,
+            monitor: monitor
         )
         let menu = StatusMenu(model: model, windows: windows, mirror: mirror, monitor: monitor, settings: settings)
         statusItem = StatusItemController(model: model, input: input, monitor: monitor, calendar: calendar, menu: menu)

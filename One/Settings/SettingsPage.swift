@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 設定の窓の各タブの形をそろえる。窓とタブそのものは `SettingsWindow` が AppKit で組み、
 /// 各タブの中身はそれぞれの機能のフォルダにある（`GeneralSettings`・`InputSettings`・
-/// `WindowSettings`・`MirrorSettings`・`CalendarSettings`・`MonitorSettings`）。
+/// `WindowSettings`・`TrackpadSettings`・`MirrorSettings`・`CalendarSettings`・`MonitorSettings`）。
 ///
 /// 前は SwiftUI の `Settings` シーンの中に `TabView` を置いていた。アイコンの左右の
 /// クリックを見分けるためにメニューバーの部分を AppKit にしたところ、`Settings` シーンを

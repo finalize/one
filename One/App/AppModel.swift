@@ -5,7 +5,8 @@ import ServiceManagement
 /// アプリ全体の状態。アクセシビリティの許可、ログイン項目、⌘ の左クリックの割り当て。
 ///
 /// 機能ごとの状態は、それぞれの Model にある（英かなは `InputModel`、ウィンドウは `WindowModel`、
-/// 鏡は `MirrorModel`、カレンダーは `CalendarModel`、モニタは `MonitorModel`）。
+/// トラックパッドの端は `TrackpadModel`、鏡は `MirrorModel`、カレンダーは `CalendarModel`、
+/// モニタは `MonitorModel`）。
 ///
 /// `@Observable` を付けると、この class のプロパティを読んだ View が
 /// そのプロパティが変わったときだけ描き直される。React の state + 再レンダリングに
@@ -23,7 +24,8 @@ final class AppModel {
     private(set) var isTrusted = false
 
     /// 許可が下りたとき（起動したときにもう下りていたときも）に呼ばれる。
-    /// ⌘ の見張り（`InputModel`）とドラッグの見張り（`WindowModel`）を始める合図。
+    /// ⌘ の見張り（`InputModel`）、ドラッグの見張り（`WindowModel`）、トラックパッドの見張り
+    /// （`TrackpadModel`）を始める合図。
     var onTrusted: (() -> Void)?
 
     /// メニューバーの ⌘ の左クリックでカレンダーを出すか。

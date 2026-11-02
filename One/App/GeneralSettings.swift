@@ -19,7 +19,7 @@ struct GeneralSettings: View {
                     }
                 } label: {
                     Text("アクセシビリティ")
-                    Text("⌘ の単独押しを見るのと、ほかのアプリのウィンドウを動かすのに使う。")
+                    Text("⌘ の単独押しとトラックパッドの指を見るのと、ほかのアプリのウィンドウを動かす・音量や明るさのキーを送るのに使う。")
                 }
                 LabeledContent {
                     switch calendar.access {
