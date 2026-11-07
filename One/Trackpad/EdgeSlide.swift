@@ -71,6 +71,14 @@ struct EdgeSlideTracker {
         case sliding(id: AnyHashable, edge: TrackpadEdge, anchor: Double)
         /// この回は相手にしない。全部の指が離れるまで待つ。
         case ignoring
+
+        /// 追っている指。決めかけているときと、なぞっているときだけある。
+        var trackedID: AnyHashable? {
+            switch self {
+            case let .deciding(id, _, _, _), let .sliding(id, _, _): id
+            case .idle, .ignoring: nil
+            }
+        }
     }
 
     private var state = State.idle
@@ -92,9 +100,8 @@ struct EdgeSlideTracker {
     ///   - touches: いま触れている指の全部。離れた指は入れない。
     ///   - isPressing: マウスのボタン（トラックパッドの押し込みを含む）が押されているか。
     mutating func update(_ touches: [TrackpadTouch], isPressing: Bool) -> Change? {
-        let wasPresent = present
-        let isFirst = !hasSeenTouches
         // defer の中身は、この関数を抜けるときに走る。どの return で抜けても次の回のために残す。
+        // 抜けるまでは `present` も `hasSeenTouches` も前の回のままなので、下で前の回と比べられる。
         defer {
             present = Set(touches.map(\.id))
             hasSeenTouches = true
@@ -102,10 +109,7 @@ struct EdgeSlideTracker {
 
         // 置いているだけの指は数えない。打鍵中に親指を載せたままでも使えるように。
         // ただし追っている指は、途中で「置いているだけ」と見なされても追い続ける。
-        let tracked: AnyHashable? = switch state {
-        case let .deciding(id, _, _, _), let .sliding(id, _, _): id
-        case .idle, .ignoring: nil
-        }
+        let tracked = state.trackedID
         let active = touches.filter { !$0.isResting || $0.id == tracked }
 
         guard !active.isEmpty else {
@@ -116,22 +120,16 @@ struct EdgeSlideTracker {
         switch state {
         case .idle:
             // 数える指が無いところへ来た指。いま触れ始めた指で、端に触れたときだけ見る。
-            guard active.count == 1, !isPressing, let touch = active.first, !wasPresent.contains(touch.id),
-                  !isFirst || touch.began else {
+            guard active.count == 1, !isPressing, let touch = active.first, hasBegun(touch),
+                  let edge = Self.edge(at: touch.x) else {
                 state = .ignoring
                 return nil
             }
-            if touch.x <= Self.edgeWidth {
-                state = .deciding(id: touch.id, edge: .left, x: touch.x, y: touch.y)
-            } else if touch.x >= 1 - Self.edgeWidth {
-                state = .deciding(id: touch.id, edge: .right, x: touch.x, y: touch.y)
-            } else {
-                state = .ignoring
-            }
+            state = .deciding(id: touch.id, edge: edge, x: touch.x, y: touch.y)
             return nil
 
         case let .deciding(id, edge, x, y):
-            guard let touch = sole(active, id: id, isPressing: isPressing) else { return nil }
+            guard let touch = continuingTouch(active, id: id, isPressing: isPressing) else { return nil }
             let dx = abs(touch.x - x)
             let dy = abs(touch.y - y)
             // はっきり縦（横の倍以上）に動いたら、なぞり始めた。触れた高さから段を数える。
@@ -146,7 +144,7 @@ struct EdgeSlideTracker {
             return nil
 
         case let .sliding(id, edge, anchor):
-            guard let touch = sole(active, id: id, isPressing: isPressing) else { return nil }
+            guard let touch = continuingTouch(active, id: id, isPressing: isPressing) else { return nil }
             return advance(touch, id: id, edge: edge, anchor: anchor)
 
         case .ignoring:
@@ -165,10 +163,23 @@ struct EdgeSlideTracker {
         }
     }
 
+    /// 端に触れていれば、どちらの端か。
+    private static func edge(at x: Double) -> TrackpadEdge? {
+        if x <= edgeWidth { return .left }
+        if x >= 1 - edgeWidth { return .right }
+        return nil
+    }
+
+    /// この回に触れ始めた指か。前の回に無かった指で、見張りを始めて最初の回だけは macOS が「触れ始めた」と
+    /// 教える指に限る（それより前のことは分からないので、前の回と比べられない）。
+    private func hasBegun(_ touch: TrackpadTouch) -> Bool {
+        !present.contains(touch.id) && (hasSeenTouches || touch.began)
+    }
+
     /// 追っている指が、ただ1本触れている指のままならそれを返す。そうでなければこの回をやめる。
     ///
     /// 2本目が触れた、追っている指が離れた、押し込んだ、のどれかでやめる。
-    private mutating func sole(_ active: [TrackpadTouch], id: AnyHashable, isPressing: Bool) -> TrackpadTouch? {
+    private mutating func continuingTouch(_ active: [TrackpadTouch], id: AnyHashable, isPressing: Bool) -> TrackpadTouch? {
         guard active.count == 1, !isPressing, let touch = active.first, touch.id == id else {
             state = .ignoring
             return nil

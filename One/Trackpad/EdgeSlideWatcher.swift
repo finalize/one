@@ -19,23 +19,27 @@ final class EdgeSlideWatcher {
         stop()
     }
 
+    /// タップで受けるイベント。指の位置が載るジェスチャーと、クリック。
+    ///
+    /// クリックも見るのは、なぞっている途中でクリックしたらその回をやめるため。押しているかは指の位置を
+    /// 受け取るたびにも見ているが、それは「今」の状態で、届くのが遅れたイベントと順番がそろわない。
+    /// 同じタップで受ければ、指の位置と同じ順で届く。
+    private static let eventMask: CGEventMask = {
+        let clicks: [CGEventType] = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        let gesture = CGEventMask(1) << CGEventMask(NSEvent.EventType.gesture.rawValue)
+        return clicks.reduce(gesture) { $0 | CGEventMask(1) << CGEventMask($1.rawValue) }
+    }()
+
     /// 見張りを始める。アクセシビリティの許可が下りてから呼ぶ。
     func start() {
         guard tap == nil else { return }
-        // クリックも見るのは、なぞっている途中でクリックしたらその回をやめるため。押しているかは指の位置を
-        // 受け取るたびにも見ているが、それは「今」の状態で、届くのが遅れたイベントと順番がそろわない。
-        // 同じタップで受ければ、指の位置と同じ順で届く。
-        let types: [CGEventType] = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        let mask = types.reduce(CGEventMask(1) << CGEventMask(NSEvent.EventType.gesture.rawValue)) {
-            $0 | CGEventMask(1) << CGEventMask($1.rawValue)
-        }
         // C の関数として渡すので、クロージャは外の変数をつかめない。self は userInfo で渡して取り出す。
         // self を手放さずに渡す（passUnretained）。stop で外すので、外した後に呼ばれることは無い。
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .listenOnly,
-            eventsOfInterest: mask,
+            eventsOfInterest: Self.eventMask,
             callback: { _, type, event, userInfo in
                 if let userInfo {
                     Unmanaged<EdgeSlideWatcher>.fromOpaque(userInfo).takeUnretainedValue().receive(type, event)
@@ -87,27 +91,44 @@ final class EdgeSlideWatcher {
         }
         guard let nsEvent = NSEvent(cgEvent: event), nsEvent.type == .gesture else { return }
         // touching は、触れ始めた・動いた・止まっている指。離れた指は入らない。
-        let touches = nsEvent.touches(matching: .touching, in: nil).compactMap { touch -> TrackpadTouch? in
-            guard let id = touch.identity as? NSObject else { return nil }
-            return TrackpadTouch(
-                id: AnyHashable(id),
-                x: Double(touch.normalizedPosition.x),
-                y: Double(touch.normalizedPosition.y),
-                isResting: touch.isResting,
-                began: touch.phase.contains(.began)
-            )
-        }
-
+        let touches = nsEvent.touches(matching: .touching, in: nil).compactMap(TrackpadTouch.init)
         guard let change = tracker.update(touches, isPressing: NSEvent.pressedMouseButtons != 0) else { return }
-        let up = change.steps > 0
-        let (key, name): (MediaKey, String) = switch change.edge {
-        case .right: (up ? .volumeUp : .volumeDown, "音量")
-        case .left: (up ? .keyboardBrightnessUp : .keyboardBrightnessDown, "キーボードの明るさ")
-        }
+
+        let control = change.edge.control
+        let key = change.steps > 0 ? control.raise : control.lower
         for _ in 0 ..< abs(change.steps) {
             key.press()
         }
         // なぞるたびに出るので debug。ディスクには残らない。
-        log.debug("端をなぞった \(name, privacy: .public) \(change.steps, privacy: .public) 段")
+        log.debug("端をなぞった \(control.name, privacy: .public) \(change.steps, privacy: .public) 段")
+    }
+}
+
+extension TrackpadEdge {
+    /// この端で変えるもの（ログに出す名前）と、上げる・下げるキー。
+    ///
+    /// 名前とキーを1か所で組にしておく。別々に書くと、割り当てを変えたときに片方だけ直して食い違う。
+    var control: (name: String, raise: MediaKey, lower: MediaKey) {
+        switch self {
+        case .right: ("音量", .volumeUp, .volumeDown)
+        case .left: ("キーボードの明るさ", .keyboardBrightnessUp, .keyboardBrightnessDown)
+        }
+    }
+}
+
+extension TrackpadTouch {
+    /// `NSTouch` から写す。同じ指かを見分ける手がかり（`identity`）が比べられないものなら nil。
+    ///
+    /// 判定（`EdgeSlide.swift`）は AppKit を読み込まずに試せるようにしてあるので、`NSTouch` を知っている
+    /// この写し方は、見張る側に置く。
+    init?(_ touch: NSTouch) {
+        guard let id = touch.identity as? NSObject else { return nil }
+        self.init(
+            id: AnyHashable(id),
+            x: Double(touch.normalizedPosition.x),
+            y: Double(touch.normalizedPosition.y),
+            isResting: touch.isResting,
+            began: touch.phase.contains(.began)
+        )
     }
 }
